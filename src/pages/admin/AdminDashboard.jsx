@@ -1,4 +1,4 @@
-import { ADMIN_STATS, REVENUE_CHART } from '../../data/adminData.js'
+import { ADMIN_STATS, REVENUE_CHART } from '../../data/index.js'
 
 const STAT_CARDS = [
   { label: '今月の売上', value: `¥${ADMIN_STATS.monthRevenue.toLocaleString()}`, sub: `累計 ¥${ADMIN_STATS.totalRevenue.toLocaleString()}`, icon: '◈', color: '#22d3ee', glow: 'rgba(34,211,238,0.2)' },

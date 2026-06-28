@@ -1,5 +1,5 @@
 import { Link, useLocation, Outlet } from 'react-router-dom'
-import { ADMIN_STATS } from '../../data/adminData.js'
+import { ADMIN_STATS } from '../../data/index.js'
 
 const NAV = [
   { path: '/admin', label: 'ダッシュボード', icon: '◈' },

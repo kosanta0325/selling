@@ -1,6 +1,6 @@
 import { createContext, useContext, useState, useEffect } from 'react'
 import { supabase } from '../lib/supabase'
-import { PRODUCTS } from '../data/products.js'
+import { PRODUCTS } from '../data/index.js'
 
 const ProductContext = createContext(null)
 

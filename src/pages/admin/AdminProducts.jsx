@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { PENDING_PRODUCTS, PUBLISHED_PRODUCTS } from '../../data/adminData.js'
+import { PENDING_PRODUCTS, PUBLISHED_PRODUCTS } from '../../data/index.js'
 
 export default function AdminProducts() {
   const [pending, setPending] = useState(PENDING_PRODUCTS)

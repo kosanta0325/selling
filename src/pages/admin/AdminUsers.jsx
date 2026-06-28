@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { USERS } from '../../data/adminData.js'
+import { USERS } from '../../data/index.js'
 
 const STATUS_STYLES = {
   active: { color: '#34d399', bg: 'rgba(52,211,153,0.1)', border: 'rgba(52,211,153,0.2)', label: 'アクティブ' },

@@ -1,5 +1,5 @@
 import { useState, useRef, useEffect } from 'react'
-import { STATUS_CONFIG, TIMELINE_STEPS } from '../data/transactionData.js'
+import { STATUS_CONFIG, TIMELINE_STEPS } from '../data/index.js'
 import { useAuth } from '../context/AuthContext.jsx'
 import { supabase } from '../lib/supabase.js'
 
