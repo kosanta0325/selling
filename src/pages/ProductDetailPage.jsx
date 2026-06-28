@@ -152,7 +152,14 @@ export default function ProductDetailPage() {
             </div>
             <div style={styles.paymentOptions}>
               {product.paymentMethods.map(method => (
-                <button key={method} style={styles.paymentOption}>
+                <button
+                  key={method}
+                  style={styles.paymentOption}
+                  onClick={() => {
+                    setShowPaymentModal(false)
+                    navigate('/payment', { state: { product } })
+                  }}
+                >
                   <span style={styles.paymentIcon}>
                     {method === 'クレジットカード' ? '💳' :
                      method === 'PayPay' ? '📱' :

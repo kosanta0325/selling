@@ -1,28 +1,135 @@
-import { useState } from 'react'
-import { MOCK_TRANSACTIONS, STATUS_CONFIG, TIMELINE_STEPS } from '../data/transactionData.js'
+import { useState, useRef, useEffect } from 'react'
+import { STATUS_CONFIG, TIMELINE_STEPS } from '../data/transactionData.js'
+import { useAuth } from '../context/AuthContext.jsx'
+import { supabase } from '../lib/supabase.js'
 
-// デモ用の現在ユーザー（購入者・出品者両方の取引を確認できるよう切り替え可能）
-const CURRENT_USER = 'hanako_s'
+function DownloadButton({ r2Key, fileName }) {
+  const [loading, setLoading] = useState(false)
+  const [error, setError] = useState('')
 
-export default function TransactionsPage() {
-  const [transactions, setTransactions] = useState(MOCK_TRANSACTIONS)
-  const [tab, setTab] = useState('buyer')   // 'buyer' | 'seller'
-  const [selected, setSelected] = useState(null)
-
-  const buyerTxns  = transactions.filter(t => t.buyer.username  === CURRENT_USER)
-  const sellerTxns = transactions.filter(t => t.seller.username === CURRENT_USER)
-  const list = tab === 'buyer' ? buyerTxns : sellerTxns
-
-  const updateTxn = (id, patch) => {
-    setTransactions(prev => prev.map(t => t.id === id ? { ...t, ...patch } : t))
-    setSelected(prev => prev?.id === id ? { ...prev, ...patch } : prev)
+  async function handleDownload() {
+    setLoading(true)
+    setError('')
+    try {
+      const params = new URLSearchParams({ key: r2Key, fileName: fileName || '' })
+      const res = await fetch(`/api/download-file?${params}`)
+      if (!res.ok) throw new Error('ダウンロードに失敗しました')
+      const blob = await res.blob()
+      const url = URL.createObjectURL(blob)
+      const a = document.createElement('a')
+      a.href = url
+      a.download = fileName || 'file'
+      document.body.appendChild(a)
+      a.click()
+      document.body.removeChild(a)
+      URL.revokeObjectURL(url)
+    } catch (err) {
+      setError(err.message)
+    } finally {
+      setLoading(false)
+    }
   }
 
-  const addMessage = (id, msg) => {
+  return (
+    <div>
+      <button onClick={handleDownload} disabled={loading} style={{
+        display: 'flex', alignItems: 'center', gap: 6, padding: '8px 14px',
+        borderRadius: 8, border: '1px solid rgba(34,211,238,0.35)',
+        background: 'rgba(34,211,238,0.08)', color: '#22d3ee',
+        fontSize: 13, fontWeight: 600, cursor: 'pointer', opacity: loading ? 0.6 : 1,
+      }}>
+        ⬇ {loading ? 'URLを取得中...' : (fileName || 'ファイルをダウンロード')}
+      </button>
+      {error && <p style={{ fontSize: 11, color: '#f87171', marginTop: 4 }}>{error}</p>}
+    </div>
+  )
+}
+
+function isUUID(str) {
+  return /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(String(str))
+}
+
+function formatDate(iso) {
+  const d = new Date(iso)
+  return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')} ${String(d.getHours()).padStart(2,'0')}:${String(d.getMinutes()).padStart(2,'0')}`
+}
+
+function normalizeTransaction(row, userId) {
+  return {
+    id: row.id,
+    productId: row.product_id,
+    productTitle: row.product_title || '（商品名なし）',
+    productImage: row.product_image || 'https://placehold.co/52x40?text=No+Image',
+    price: row.amount,
+    buyer: { name: row.buyer?.username || '不明', username: row.buyer?.username || '不明' },
+    seller: { name: row.seller?.username || '不明', username: row.seller?.username || '不明' },
+    paymentMethod: 'クレジットカード',
+    status: row.status,
+    purchasedAt: formatDate(row.created_at),
+    deliveryDeadline: null,
+    deliveredAt: null,
+    confirmedAt: null,
+    completedAt: null,
+    messages: Array.isArray(row.messages) ? row.messages : [],
+    isBuyer: row.buyer_id === userId,
+    isSeller: row.seller_id === userId,
+  }
+}
+
+export default function TransactionsPage() {
+  const { user } = useAuth()
+  const [transactions, setTransactions] = useState([])
+  const [loading, setLoading] = useState(true)
+  const [tab, setTab] = useState('buyer')
+  const [selected, setSelected] = useState(null)
+
+  useEffect(() => {
+    if (!user) return
+    fetchTransactions()
+  }, [user])
+
+  async function fetchTransactions() {
+    setLoading(true)
+    const { data, error } = await supabase
+      .from('transactions')
+      .select('*, buyer:profiles!buyer_id(username), seller:profiles!seller_id(username)')
+      .or(`buyer_id.eq.${user.id},seller_id.eq.${user.id}`)
+      .order('created_at', { ascending: false })
+
+    if (!error && data) {
+      setTransactions(data.map(row => normalizeTransaction(row, user.id)))
+    }
+    setLoading(false)
+  }
+
+  const buyerTxns  = transactions.filter(t => t.isBuyer)
+  const sellerTxns = transactions.filter(t => t.isSeller && !t.isBuyer)
+  const list = tab === 'buyer' ? buyerTxns : sellerTxns
+
+  const updateTxn = async (id, patch) => {
+    setTransactions(prev => prev.map(t => t.id === id ? { ...t, ...patch } : t))
+    setSelected(prev => prev?.id === id ? { ...prev, ...patch } : prev)
+    if (isUUID(id)) {
+      const dbPatch = {}
+      if (patch.status) dbPatch.status = patch.status
+      if (patch.r2Key) dbPatch.r2_key = patch.r2Key
+      if (patch.fileName) dbPatch.file_name = patch.fileName
+      await supabase.from('transactions').update(dbPatch).eq('id', id)
+    }
+  }
+
+  const addMessage = async (id, msg) => {
+    const currentTxn = transactions.find(t => t.id === id)
+    const updatedMessages = [...(currentTxn?.messages || []), msg]
     setTransactions(prev => prev.map(t =>
-      t.id === id ? { ...t, messages: [...t.messages, msg] } : t
+      t.id === id ? { ...t, messages: updatedMessages } : t
     ))
-    setSelected(prev => prev?.id === id ? { ...prev, messages: [...prev.messages, msg] } : prev)
+    setSelected(prev => prev?.id === id ? { ...prev, messages: updatedMessages } : prev)
+    if (isUUID(id)) {
+      const dbPatch = { messages: updatedMessages }
+      if (msg.r2Key) { dbPatch.r2_key = msg.r2Key; dbPatch.file_name = msg.fileName }
+      await supabase.from('transactions').update(dbPatch).eq('id', id)
+    }
   }
 
   return (
@@ -31,6 +138,10 @@ export default function TransactionsPage() {
         <h1 style={s.pageTitle}>取引管理</h1>
         <p style={s.pageSubtitle}>購入・販売した商品の取引状況を確認・管理できます</p>
       </div>
+
+      {loading && (
+        <div style={{ color: '#64748b', fontSize: 14, padding: '20px 0' }}>取引を読み込み中...</div>
+      )}
 
       {/* Tabs */}
       <div style={s.tabs}>
@@ -105,30 +216,49 @@ function TransactionDetail({ txn, role, onUpdateTxn, onAddMessage }) {
   const step = st.step
 
   const [msgText, setMsgText] = useState('')
-  const [deliveryUrl, setDeliveryUrl] = useState('')
+  const [deliveryFile, setDeliveryFile] = useState(null)
   const [deliveryNote, setDeliveryNote] = useState('')
   const [showDeliveryForm, setShowDeliveryForm] = useState(false)
+  const [uploading, setUploading] = useState(false)
+  const [uploadError, setUploadError] = useState('')
   const [confirmModal, setConfirmModal] = useState(false)
 
   const now = new Date().toLocaleString('ja-JP', { year: 'numeric', month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit' }).replace(/\//g, '-')
 
-  // 出品者：納品する
-  const handleDeliver = () => {
-    if (!deliveryUrl.trim()) return
-    const msg = {
-      id: `m-${Date.now()}`,
-      from: 'seller',
-      type: 'delivery',
-      content: '納品が完了しました。以下をご確認ください。',
-      deliveryUrl: deliveryUrl.trim(),
-      deliveryNote: deliveryNote.trim(),
-      sentAt: now,
+  // 出品者：ファイルアップロードして納品
+  const handleDeliver = async () => {
+    if (!deliveryFile) return
+    setUploading(true)
+    setUploadError('')
+    try {
+      const formData = new FormData()
+      formData.append('file', deliveryFile)
+      formData.append('transactionId', txn.id)
+
+      const res = await fetch('/api/upload-file', { method: 'POST', body: formData })
+      if (!res.ok) throw new Error('アップロードに失敗しました')
+      const { key, fileName } = await res.json()
+
+      const msg = {
+        id: `m-${Date.now()}`,
+        from: 'seller',
+        type: 'delivery',
+        content: '納品が完了しました。ファイルをダウンロードしてください。',
+        r2Key: key,
+        fileName,
+        deliveryNote: deliveryNote.trim(),
+        sentAt: now,
+      }
+      onAddMessage(txn.id, msg)
+      onUpdateTxn(txn.id, { status: 'delivered', deliveredAt: now, r2Key: key, fileName })
+      setDeliveryFile(null)
+      setDeliveryNote('')
+      setShowDeliveryForm(false)
+    } catch (err) {
+      setUploadError(err.message)
+    } finally {
+      setUploading(false)
     }
-    onAddMessage(txn.id, msg)
-    onUpdateTxn(txn.id, { status: 'delivered', deliveredAt: now })
-    setDeliveryUrl('')
-    setDeliveryNote('')
-    setShowDeliveryForm(false)
   }
 
   // 購入者：受け取り確認
@@ -228,9 +358,9 @@ function TransactionDetail({ txn, role, onUpdateTxn, onAddMessage }) {
                     <span style={s.deliveryLabel}>納品物</span>
                   </div>
                   <p style={s.deliveryText}>{msg.content}</p>
-                  <a href={msg.deliveryUrl} target="_blank" rel="noreferrer" style={s.deliveryLink}>
-                    🔗 {msg.deliveryUrl}
-                  </a>
+                  {msg.r2Key && (
+                    <DownloadButton r2Key={msg.r2Key} fileName={msg.fileName} />
+                  )}
                   {msg.deliveryNote && (
                     <p style={s.deliveryNote}>{msg.deliveryNote}</p>
                   )}
@@ -255,12 +385,28 @@ function TransactionDetail({ txn, role, onUpdateTxn, onAddMessage }) {
             ) : (
               <div style={s.deliveryForm}>
                 <div style={s.deliveryFormTitle}>納品情報を入力</div>
-                <input
-                  value={deliveryUrl}
-                  onChange={e => setDeliveryUrl(e.target.value)}
-                  placeholder="納品URL（Google Drive / GitHub / ダウンロードリンク等）"
-                  style={s.deliveryInput}
-                />
+                <label style={s.fileLabel}>
+                  <input
+                    type="file"
+                    style={{ display: 'none' }}
+                    onChange={e => { setDeliveryFile(e.target.files[0] || null); setUploadError('') }}
+                  />
+                  <div style={{ ...s.fileDropZone, borderColor: deliveryFile ? 'rgba(34,211,238,0.5)' : 'rgba(139,92,246,0.25)' }}>
+                    {deliveryFile ? (
+                      <>
+                        <span style={{ fontSize: 20 }}>📄</span>
+                        <span style={{ fontSize: 13, color: '#22d3ee', fontWeight: 600 }}>{deliveryFile.name}</span>
+                        <span style={{ fontSize: 11, color: '#64748b' }}>{(deliveryFile.size / 1024).toFixed(0)} KB</span>
+                      </>
+                    ) : (
+                      <>
+                        <span style={{ fontSize: 24 }}>⬆</span>
+                        <span style={{ fontSize: 13, color: '#94a3b8' }}>クリックしてファイルを選択</span>
+                        <span style={{ fontSize: 11, color: '#475569' }}>最大100MB</span>
+                      </>
+                    )}
+                  </div>
+                </label>
                 <textarea
                   value={deliveryNote}
                   onChange={e => setDeliveryNote(e.target.value)}
@@ -268,11 +414,16 @@ function TransactionDetail({ txn, role, onUpdateTxn, onAddMessage }) {
                   rows={3}
                   style={s.deliveryTextarea}
                 />
+                {uploadError && <p style={{ fontSize: 12, color: '#f87171' }}>{uploadError}</p>}
                 <div style={{ display: 'flex', gap: 8 }}>
-                  <button onClick={handleDeliver} disabled={!deliveryUrl.trim()} style={{ ...s.deliverBtn, flex: 1, opacity: deliveryUrl.trim() ? 1 : 0.4 }}>
-                    納品を完了する
+                  <button
+                    onClick={handleDeliver}
+                    disabled={!deliveryFile || uploading}
+                    style={{ ...s.deliverBtn, flex: 1, opacity: (deliveryFile && !uploading) ? 1 : 0.4 }}
+                  >
+                    {uploading ? 'アップロード中...' : '納品を完了する'}
                   </button>
-                  <button onClick={() => setShowDeliveryForm(false)} style={s.cancelSmallBtn}>
+                  <button onClick={() => { setShowDeliveryForm(false); setDeliveryFile(null); setUploadError('') }} style={s.cancelSmallBtn}>
                     キャンセル
                   </button>
                 </div>
@@ -294,7 +445,8 @@ function TransactionDetail({ txn, role, onUpdateTxn, onAddMessage }) {
           <div style={{ ...s.statusNote, color: st.color, borderColor: st.border, backgroundColor: st.bg }}>
             {txn.status === 'pending' && role === 'buyer' && '販売者からの納品をお待ちください'}
             {txn.status === 'delivered' && role === 'seller' && '購入者の受け取り確認待ちです。確認後に入金されます'}
-            {txn.status === 'confirmed' && '受取確認済み。入金処理中です（1〜3営業日）'}
+            {txn.status === 'confirmed' && role === 'buyer' && '取引完了'}
+    {txn.status === 'confirmed' && role === 'seller' && '受取確認済み。入金処理中です（1〜3営業日）'}
             {txn.status === 'completed' && '取引が完了しました'}
           </div>
         )}
@@ -431,7 +583,8 @@ const s = {
   statusNote: { padding: '10px 14px', borderRadius: 8, border: '1px solid', fontSize: 12, fontWeight: 500, textAlign: 'center' },
   deliveryForm: { display: 'flex', flexDirection: 'column', gap: 8, padding: '14px', backgroundColor: 'rgba(34,211,238,0.04)', borderRadius: 10, border: '1px solid rgba(34,211,238,0.1)' },
   deliveryFormTitle: { fontSize: 12, fontWeight: 700, color: '#22d3ee', marginBottom: 2 },
-  deliveryInput: { padding: '10px 12px', borderRadius: 8, border: '1px solid rgba(34,211,238,0.2)', backgroundColor: 'rgba(14,14,32,0.8)', color: '#e2e8f0', fontSize: 13, outline: 'none' },
+  fileLabel: { cursor: 'pointer', display: 'block' },
+  fileDropZone: { display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 6, padding: '18px 12px', borderRadius: 10, border: '1.5px dashed rgba(139,92,246,0.25)', backgroundColor: 'rgba(14,14,32,0.6)', transition: 'border-color 0.2s' },
   deliveryTextarea: { padding: '10px 12px', borderRadius: 8, border: '1px solid rgba(139,92,246,0.15)', backgroundColor: 'rgba(14,14,32,0.8)', color: '#e2e8f0', fontSize: 13, outline: 'none', resize: 'none', lineHeight: 1.6 },
   cancelSmallBtn: { padding: '10px 16px', backgroundColor: 'transparent', color: '#64748b', border: '1px solid rgba(255,255,255,0.06)', borderRadius: 8, fontSize: 13, cursor: 'pointer' },
   msgInput: { display: 'flex', gap: 8 },

@@ -1,6 +1,8 @@
 import { useState, useRef } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useProducts } from '../context/ProductContext.jsx'
+import { useAuth } from '../context/AuthContext.jsx'
+import { supabase } from '../lib/supabase.js'
 
 const PAYMENT_OPTIONS = [
   { id: 'credit', label: 'クレジットカード', icon: '💳' },
@@ -15,7 +17,8 @@ const CATEGORIES = ['テキスト生成', '画像生成', 'マーケティング
 
 export default function SellerPage() {
   const navigate = useNavigate()
-  const { addProduct } = useProducts()
+  const { refreshProducts } = useProducts()
+  const { user } = useAuth()
   const fileInputRef = useRef(null)
 
   const [form, setForm] = useState({
@@ -30,6 +33,8 @@ export default function SellerPage() {
   const [images, setImages] = useState([])
   const [dragOver, setDragOver] = useState(false)
   const [errors, setErrors] = useState({})
+  const [submitting, setSubmitting] = useState(false)
+  const [submitError, setSubmitError] = useState('')
 
   const handleChange = (field, value) => {
     setForm(prev => ({ ...prev, [field]: value }))
@@ -79,46 +84,62 @@ export default function SellerPage() {
     return e
   }
 
-  const handleSubmit = (e) => {
+  const handleSubmit = async (e) => {
     e.preventDefault()
     const errs = validate()
     if (Object.keys(errs).length > 0) {
       setErrors(errs)
-      // 最初のエラー項目にスクロール
       window.scrollTo({ top: 0, behavior: 'smooth' })
       return
     }
 
-    // タグを配列に変換
-    const tagsArray = form.tags
-      ? form.tags.split(',').map(t => t.trim()).filter(Boolean)
-      : []
+    setSubmitting(true)
+    setSubmitError('')
 
-    // 支払い方法ラベルに変換
-    const paymentLabels = form.paymentMethods.map(
-      id => PAYMENT_OPTIONS.find(o => o.id === id)?.label ?? id
-    )
+    try {
+      const imageUrls = []
+      for (const img of images) {
+        const ext = img.file.name.split('.').pop()
+        const path = `${user.id}/${Date.now()}_${Math.random().toString(36).slice(2)}.${ext}`
+        const { error: uploadErr } = await supabase.storage
+          .from('product-images')
+          .upload(path, img.file, { contentType: img.file.type })
+        if (uploadErr) throw uploadErr
+        const { data: { publicUrl } } = supabase.storage
+          .from('product-images')
+          .getPublicUrl(path)
+        imageUrls.push(publicUrl)
+      }
 
-    // 新商品オブジェクトを作成
-    const newProduct = {
-      id: `user-${Date.now()}`,
-      title: form.title.trim(),
-      price: Number(form.price),
-      seller: 'あなた',
-      sellerAvatar: form.title[0]?.toUpperCase() ?? 'U',
-      rating: 0,
-      reviewCount: 0,
-      category: form.category,
-      description: form.description.trim(),
-      deliveryDays: Number(form.deliveryDays),
-      paymentMethods: paymentLabels,
-      images: images.map(img => img.url),
-      tags: tagsArray,
-      isNew: true,
+      const tagsArray = form.tags
+        ? form.tags.split(',').map(t => t.trim()).filter(Boolean)
+        : []
+      const paymentLabels = form.paymentMethods.map(
+        id => PAYMENT_OPTIONS.find(o => o.id === id)?.label ?? id
+      )
+
+      const { error: insertErr } = await supabase.from('products').insert({
+        seller_id: user.id,
+        title: form.title.trim(),
+        description: form.description.trim(),
+        price: Number(form.price),
+        category: form.category,
+        tags: tagsArray,
+        image_urls: imageUrls,
+        delivery_days: Number(form.deliveryDays),
+        payment_methods: paymentLabels,
+        status: 'active',
+      })
+      if (insertErr) throw insertErr
+
+      await refreshProducts()
+      navigate('/')
+    } catch (err) {
+      console.error('出品エラー:', err)
+      setSubmitError('出品に失敗しました。もう一度お試しください。')
+    } finally {
+      setSubmitting(false)
     }
-
-    addProduct(newProduct)
-    navigate('/', { state: { newProductId: newProduct.id } })
   }
 
   return (
@@ -238,7 +259,7 @@ export default function SellerPage() {
           <textarea
             value={form.description}
             onChange={e => handleChange('description', e.target.value)}
-            placeholder="商品の機能・使い方・動作環境など詳しく記載してください&#10;&#10;【機能】&#10;- XXX&#10;&#10;【対応環境】&#10;Windows / Mac"
+            placeholder="商品の機能・使い方・動作環境など詳しく記載してください"
             rows={10}
             style={{ ...styles.textarea, ...(errors.description ? styles.inputError : {}) }}
           />
@@ -304,8 +325,13 @@ export default function SellerPage() {
         </div>
 
         {/* Submit */}
-        <button type="submit" style={styles.submitBtn}>
-          出品して一覧に追加する →
+        {submitError && (
+          <div style={{ padding: '12px 16px', borderRadius: 10, background: 'rgba(239,68,68,0.1)', border: '1px solid rgba(239,68,68,0.3)', color: '#f87171', fontSize: 13 }}>
+            {submitError}
+          </div>
+        )}
+        <button type="submit" style={{ ...styles.submitBtn, opacity: submitting ? 0.7 : 1 }} disabled={submitting}>
+          {submitting ? '出品中...' : '出品して一覧に追加する →'}
         </button>
       </form>
     </div>
@@ -313,294 +339,104 @@ export default function SellerPage() {
 }
 
 const styles = {
-  container: {
-    maxWidth: 680,
-    margin: '0 auto',
-    padding: '40px 24px 80px',
-  },
-  headerSection: {
-    marginBottom: 36,
-  },
+  container: { maxWidth: 680, margin: '0 auto', padding: '40px 24px 80px' },
+  headerSection: { marginBottom: 36 },
   headerBadge: {
-    display: 'inline-block',
-    padding: '5px 14px',
-    borderRadius: 20,
-    border: '1px solid rgba(139,92,246,0.4)',
-    color: '#8b5cf6',
-    fontSize: 11,
-    fontWeight: 700,
-    letterSpacing: '0.08em',
-    marginBottom: 14,
+    display: 'inline-block', padding: '5px 14px', borderRadius: 20,
+    border: '1px solid rgba(139,92,246,0.4)', color: '#8b5cf6', fontSize: 11,
+    fontWeight: 700, letterSpacing: '0.08em', marginBottom: 14,
     background: 'rgba(139,92,246,0.07)',
   },
-  pageTitle: {
-    fontSize: 30,
-    fontWeight: 800,
-    color: '#f1f5f9',
-    marginBottom: 8,
-    letterSpacing: '-0.5px',
-  },
-  pageSubtitle: {
-    fontSize: 14,
-    color: '#64748b',
-  },
-  form: {
-    display: 'flex',
-    flexDirection: 'column',
-    gap: 28,
-  },
-  section: {
-    display: 'flex',
-    flexDirection: 'column',
-    gap: 8,
-  },
-  row: {
-    display: 'flex',
-    gap: 16,
-  },
-  labelRow: {
-    display: 'flex',
-    alignItems: 'center',
-    gap: 7,
-  },
-  sectionTitle: {
-    fontSize: 13,
-    fontWeight: 700,
-    color: '#94a3b8',
-    letterSpacing: '0.03em',
-  },
+  pageTitle: { fontSize: 30, fontWeight: 800, color: '#f1f5f9', marginBottom: 8, letterSpacing: '-0.5px' },
+  pageSubtitle: { fontSize: 14, color: '#64748b' },
+  form: { display: 'flex', flexDirection: 'column', gap: 28 },
+  section: { display: 'flex', flexDirection: 'column', gap: 8 },
+  row: { display: 'flex', gap: 16 },
+  labelRow: { display: 'flex', alignItems: 'center', gap: 7 },
+  sectionTitle: { fontSize: 13, fontWeight: 700, color: '#94a3b8', letterSpacing: '0.03em' },
   required: {
-    fontSize: 10,
-    backgroundColor: 'rgba(239,68,68,0.15)',
-    color: '#f87171',
-    padding: '2px 7px',
-    borderRadius: 4,
-    fontWeight: 700,
-    border: '1px solid rgba(239,68,68,0.2)',
+    fontSize: 10, backgroundColor: 'rgba(239,68,68,0.15)', color: '#f87171',
+    padding: '2px 7px', borderRadius: 4, fontWeight: 700, border: '1px solid rgba(239,68,68,0.2)',
   },
   optional: {
-    fontSize: 10,
-    backgroundColor: 'rgba(100,116,139,0.1)',
-    color: '#64748b',
-    padding: '2px 7px',
-    borderRadius: 4,
-    fontWeight: 600,
+    fontSize: 10, backgroundColor: 'rgba(100,116,139,0.1)', color: '#64748b',
+    padding: '2px 7px', borderRadius: 4, fontWeight: 600,
   },
-  hint: {
-    fontSize: 11,
-    color: '#334155',
-    marginLeft: 'auto',
-  },
-  charCountBadge: {
-    marginLeft: 'auto',
-    fontSize: 11,
-    color: '#334155',
-  },
+  hint: { fontSize: 11, color: '#334155', marginLeft: 'auto' },
+  charCountBadge: { marginLeft: 'auto', fontSize: 11, color: '#334155' },
   input: {
-    padding: '12px 14px',
-    borderRadius: 10,
-    border: '1px solid rgba(139,92,246,0.15)',
-    fontSize: 14,
-    outline: 'none',
-    backgroundColor: 'rgba(14,14,32,0.8)',
-    color: '#e2e8f0',
-    transition: 'border-color 0.2s, box-shadow 0.2s',
-    width: '100%',
+    padding: '12px 14px', borderRadius: 10, border: '1px solid rgba(139,92,246,0.15)',
+    fontSize: 14, outline: 'none', backgroundColor: 'rgba(14,14,32,0.8)',
+    color: '#e2e8f0', transition: 'border-color 0.2s', width: '100%', boxSizing: 'border-box',
   },
-  inputError: {
-    borderColor: 'rgba(239,68,68,0.4)',
-  },
+  inputError: { borderColor: 'rgba(239,68,68,0.4)' },
   textarea: {
-    padding: '12px 14px',
-    borderRadius: 10,
-    border: '1px solid rgba(139,92,246,0.15)',
-    fontSize: 14,
-    outline: 'none',
-    backgroundColor: 'rgba(14,14,32,0.8)',
-    color: '#e2e8f0',
-    resize: 'vertical',
-    lineHeight: 1.8,
-    width: '100%',
+    padding: '12px 14px', borderRadius: 10, border: '1px solid rgba(139,92,246,0.15)',
+    fontSize: 14, outline: 'none', backgroundColor: 'rgba(14,14,32,0.8)',
+    color: '#e2e8f0', resize: 'vertical', lineHeight: 1.8, width: '100%', boxSizing: 'border-box',
+    fontFamily: 'inherit',
   },
-  error: {
-    fontSize: 12,
-    color: '#f87171',
-    fontWeight: 500,
-  },
-  priceWrapper: {
-    position: 'relative',
-  },
+  error: { fontSize: 12, color: '#f87171', fontWeight: 500 },
+  priceWrapper: { position: 'relative' },
   pricePrefix: {
-    position: 'absolute',
-    left: 14,
-    top: '50%',
-    transform: 'translateY(-50%)',
-    fontSize: 15,
-    fontWeight: 700,
-    color: '#64748b',
-    pointerEvents: 'none',
-    zIndex: 1,
+    position: 'absolute', left: 14, top: '50%', transform: 'translateY(-50%)',
+    fontSize: 15, fontWeight: 700, color: '#64748b', pointerEvents: 'none', zIndex: 1,
   },
-  priceInput: {
-    paddingLeft: 30,
-  },
+  priceInput: { paddingLeft: 30 },
   dropzone: {
-    border: '1px dashed rgba(139,92,246,0.3)',
-    borderRadius: 12,
-    padding: '32px 20px',
-    textAlign: 'center',
-    cursor: 'pointer',
-    backgroundColor: 'rgba(139,92,246,0.03)',
-    transition: 'all 0.2s',
-    display: 'flex',
-    flexDirection: 'column',
-    alignItems: 'center',
-    gap: 8,
+    border: '1px dashed rgba(139,92,246,0.3)', borderRadius: 12, padding: '32px 20px',
+    textAlign: 'center', cursor: 'pointer', backgroundColor: 'rgba(139,92,246,0.03)',
+    transition: 'all 0.2s', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 8,
   },
-  dropzoneActive: {
-    borderColor: '#8b5cf6',
-    backgroundColor: 'rgba(139,92,246,0.08)',
-    boxShadow: '0 0 20px rgba(139,92,246,0.15)',
-  },
+  dropzoneActive: { borderColor: '#8b5cf6', backgroundColor: 'rgba(139,92,246,0.08)', boxShadow: '0 0 20px rgba(139,92,246,0.15)' },
   dropzoneIconWrapper: {
-    width: 44,
-    height: 44,
-    borderRadius: '50%',
-    background: 'rgba(139,92,246,0.1)',
-    border: '1px solid rgba(139,92,246,0.2)',
-    display: 'flex',
-    alignItems: 'center',
-    justifyContent: 'center',
-    fontSize: 20,
-    color: '#8b5cf6',
-    marginBottom: 4,
+    width: 44, height: 44, borderRadius: '50%', background: 'rgba(139,92,246,0.1)',
+    border: '1px solid rgba(139,92,246,0.2)', display: 'flex', alignItems: 'center',
+    justifyContent: 'center', fontSize: 20, color: '#8b5cf6', marginBottom: 4,
   },
   dropzoneIcon: { fontWeight: 300 },
-  dropzoneText: {
-    fontSize: 14,
-    fontWeight: 600,
-    color: '#94a3b8',
-  },
-  dropzoneSubText: {
-    fontSize: 12,
-    color: '#475569',
-  },
-  imageGrid: {
-    display: 'flex',
-    gap: 8,
-    flexWrap: 'wrap',
-  },
+  dropzoneText: { fontSize: 14, fontWeight: 600, color: '#94a3b8' },
+  dropzoneSubText: { fontSize: 12, color: '#475569' },
+  imageGrid: { display: 'flex', gap: 8, flexWrap: 'wrap' },
   imageItem: {
-    position: 'relative',
-    width: 96,
-    height: 72,
-    borderRadius: 8,
-    overflow: 'hidden',
-    border: '1px solid rgba(139,92,246,0.2)',
+    position: 'relative', width: 96, height: 72, borderRadius: 8,
+    overflow: 'hidden', border: '1px solid rgba(139,92,246,0.2)',
   },
   mainBadge: {
-    position: 'absolute',
-    bottom: 4,
-    left: 4,
-    backgroundColor: 'rgba(139,92,246,0.8)',
-    color: '#fff',
-    fontSize: 8,
-    fontWeight: 800,
-    padding: '2px 5px',
-    borderRadius: 3,
-    zIndex: 1,
-    letterSpacing: '0.05em',
+    position: 'absolute', bottom: 4, left: 4, backgroundColor: 'rgba(139,92,246,0.8)',
+    color: '#fff', fontSize: 8, fontWeight: 800, padding: '2px 5px', borderRadius: 3,
+    zIndex: 1, letterSpacing: '0.05em',
   },
-  previewImg: {
-    width: '100%',
-    height: '100%',
-    objectFit: 'cover',
-  },
+  previewImg: { width: '100%', height: '100%', objectFit: 'cover' },
   removeBtn: {
-    position: 'absolute',
-    top: 3,
-    right: 3,
-    width: 18,
-    height: 18,
-    backgroundColor: 'rgba(0,0,0,0.7)',
-    color: '#fff',
-    border: 'none',
-    borderRadius: '50%',
-    fontSize: 9,
-    cursor: 'pointer',
-    display: 'flex',
-    alignItems: 'center',
-    justifyContent: 'center',
+    position: 'absolute', top: 3, right: 3, width: 18, height: 18,
+    backgroundColor: 'rgba(0,0,0,0.7)', color: '#fff', border: 'none', borderRadius: '50%',
+    fontSize: 9, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center',
   },
-  deliveryGrid: {
-    display: 'flex',
-    gap: 8,
-    flexWrap: 'wrap',
-  },
+  deliveryGrid: { display: 'flex', gap: 8, flexWrap: 'wrap' },
   deliveryBtn: {
-    padding: '9px 16px',
-    borderRadius: 8,
-    border: '1px solid rgba(139,92,246,0.15)',
-    backgroundColor: 'transparent',
-    fontSize: 13,
-    fontWeight: 500,
-    color: '#64748b',
-    cursor: 'pointer',
-    transition: 'all 0.15s',
+    padding: '9px 16px', borderRadius: 8, border: '1px solid rgba(139,92,246,0.15)',
+    backgroundColor: 'transparent', fontSize: 13, fontWeight: 500, color: '#64748b',
+    cursor: 'pointer', transition: 'all 0.15s',
   },
   deliveryBtnActive: {
-    borderColor: 'rgba(139,92,246,0.6)',
-    backgroundColor: 'rgba(139,92,246,0.1)',
-    color: '#a78bfa',
-    fontWeight: 700,
-    boxShadow: '0 0 10px rgba(139,92,246,0.15)',
+    borderColor: 'rgba(139,92,246,0.6)', backgroundColor: 'rgba(139,92,246,0.1)',
+    color: '#a78bfa', fontWeight: 700, boxShadow: '0 0 10px rgba(139,92,246,0.15)',
   },
-  paymentGrid: {
-    display: 'grid',
-    gridTemplateColumns: 'repeat(3, 1fr)',
-    gap: 8,
-  },
+  paymentGrid: { display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 8 },
   paymentBtn: {
-    display: 'flex',
-    alignItems: 'center',
-    gap: 8,
-    padding: '11px 14px',
-    borderRadius: 10,
-    border: '1px solid rgba(139,92,246,0.12)',
-    backgroundColor: 'rgba(255,255,255,0.02)',
-    fontSize: 12,
-    fontWeight: 500,
-    color: '#64748b',
-    cursor: 'pointer',
-    transition: 'all 0.15s',
+    display: 'flex', alignItems: 'center', gap: 8, padding: '11px 14px', borderRadius: 10,
+    border: '1px solid rgba(139,92,246,0.12)', backgroundColor: 'rgba(255,255,255,0.02)',
+    fontSize: 12, fontWeight: 500, color: '#64748b', cursor: 'pointer', transition: 'all 0.15s',
     position: 'relative',
   },
-  paymentBtnActive: {
-    borderColor: 'rgba(139,92,246,0.5)',
-    backgroundColor: 'rgba(139,92,246,0.08)',
-    color: '#a78bfa',
-    fontWeight: 700,
-  },
+  paymentBtnActive: { borderColor: 'rgba(139,92,246,0.5)', backgroundColor: 'rgba(139,92,246,0.08)', color: '#a78bfa', fontWeight: 700 },
   payBtnIcon: { fontSize: 16 },
-  checkmark: {
-    marginLeft: 'auto',
-    color: '#8b5cf6',
-    fontWeight: 800,
-    fontSize: 13,
-  },
+  checkmark: { marginLeft: 'auto', color: '#8b5cf6', fontWeight: 800, fontSize: 13 },
   submitBtn: {
-    width: '100%',
-    padding: '16px',
-    background: 'linear-gradient(135deg, #7c3aed, #0891b2)',
-    color: '#fff',
-    border: 'none',
-    borderRadius: 12,
-    fontSize: 16,
-    fontWeight: 700,
-    cursor: 'pointer',
-    boxShadow: '0 0 24px rgba(139,92,246,0.35)',
-    letterSpacing: '0.03em',
-    transition: 'opacity 0.2s',
-    marginTop: 4,
+    width: '100%', padding: '16px', background: 'linear-gradient(135deg, #7c3aed, #0891b2)',
+    color: '#fff', border: 'none', borderRadius: 12, fontSize: 16, fontWeight: 700,
+    cursor: 'pointer', boxShadow: '0 0 24px rgba(139,92,246,0.35)',
+    letterSpacing: '0.03em', transition: 'opacity 0.2s', marginTop: 4,
   },
 }
