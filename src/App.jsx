@@ -9,7 +9,6 @@ import AdminLayout from './pages/admin/AdminLayout.jsx'
 import AdminDashboard from './pages/admin/AdminDashboard.jsx'
 import AdminProducts from './pages/admin/AdminProducts.jsx'
 import AdminUsers from './pages/admin/AdminUsers.jsx'
-import AdminLoginPage from './pages/admin/AdminLoginPage.jsx'
 import PaymentPage from './pages/PaymentPage.jsx'
 import LoginPage from './pages/LoginPage.jsx'
 import SignupPage from './pages/SignupPage.jsx'
@@ -22,31 +21,42 @@ function PrivateRoute({ children }) {
   return children
 }
 
+function AdminRoute({ children }) {
+  const { user, profile, loading } = useAuth()
+  if (loading) return <div style={{ minHeight: '100vh', background: '#05050f' }} />
+  if (!user) return <Navigate to="/login" replace />
+  if (profile && profile.role !== 'admin') return <Navigate to="/" replace />
+  return children
+}
+
+function HomeRedirect() {
+  const { profile, loading } = useAuth()
+  if (loading) return <div style={{ minHeight: '100vh', background: '#05050f' }} />
+  if (profile?.role === 'admin') return <Navigate to="/admin" replace />
+  return <ListingPage />
+}
+
 export default function App() {
   return (
     <Routes>
-      {/* 認証ページ */}
       <Route path="/login" element={<LoginPage />} />
       <Route path="/signup" element={<SignupPage />} />
 
-      {/* Admin login (no auth required) */}
-      <Route path="/admin/login" element={<AdminLoginPage />} />
-
-      {/* Admin routes (auth required — checked inside AdminLayout) */}
-      <Route path="/admin" element={<AdminLayout />}>
+      {/* 管理者ルート */}
+      <Route path="/admin" element={<AdminRoute><AdminLayout /></AdminRoute>}>
         <Route index element={<AdminDashboard />} />
         <Route path="products" element={<AdminProducts />} />
         <Route path="users" element={<AdminUsers />} />
       </Route>
 
-      {/* User-facing routes (ログイン必須) */}
+      {/* 一般ユーザールート */}
       <Route path="/*" element={
         <PrivateRoute>
           <div style={{ minHeight: '100vh', display: 'flex', flexDirection: 'column' }}>
             <Header />
             <main style={{ flex: 1 }}>
               <Routes>
-                <Route path="/" element={<ListingPage />} />
+                <Route path="/" element={<HomeRedirect />} />
                 <Route path="/product/:id" element={<ProductDetailPage />} />
                 <Route path="/sell" element={<SellerPage />} />
                 <Route path="/my-products" element={<MyProductsPage />} />

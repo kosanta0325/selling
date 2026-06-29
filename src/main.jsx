@@ -3,7 +3,6 @@ import ReactDOM from 'react-dom/client'
 import { BrowserRouter } from 'react-router-dom'
 import App from './App.jsx'
 import { ProductProvider } from './context/ProductContext.jsx'
-import { AdminAuthProvider } from './context/AdminAuthContext.jsx'
 import { AuthProvider } from './context/AuthContext.jsx'
 import './index.css'
 
@@ -11,11 +10,9 @@ ReactDOM.createRoot(document.getElementById('root')).render(
   <React.StrictMode>
     <BrowserRouter>
       <AuthProvider>
-        <AdminAuthProvider>
-          <ProductProvider>
-            <App />
-          </ProductProvider>
-        </AdminAuthProvider>
+        <ProductProvider>
+          <App />
+        </ProductProvider>
       </AuthProvider>
     </BrowserRouter>
   </React.StrictMode>,

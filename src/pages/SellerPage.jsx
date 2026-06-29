@@ -128,7 +128,7 @@ export default function SellerPage() {
         image_urls: imageUrls,
         delivery_days: Number(form.deliveryDays),
         payment_methods: paymentLabels,
-        status: 'active',
+        status: 'pending',
       })
       if (insertErr) throw insertErr
 
