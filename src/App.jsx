@@ -32,7 +32,9 @@ function AdminRoute({ children }) {
 function HomeRedirect() {
   const { profile, loading } = useAuth()
   if (loading) return <div style={{ minHeight: '100vh', background: '#05050f' }} />
-  if (profile?.role === 'admin') return <Navigate to="/admin" replace />
+  if (profile?.role === 'admin' && !sessionStorage.getItem('adminUserView')) {
+    return <Navigate to="/admin" replace />
+  }
   return <ListingPage />
 }
 

@@ -17,8 +17,13 @@ export function AuthProvider({ children }) {
 
     const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
       setUser(session?.user ?? null)
-      if (session?.user) fetchProfile(session.user.id)
-      else { setProfile(null); setLoading(false) }
+      if (session?.user) {
+        setLoading(true)
+        fetchProfile(session.user.id)
+      } else {
+        setProfile(null)
+        setLoading(false)
+      }
     })
 
     return () => subscription.unsubscribe()
@@ -33,14 +38,16 @@ export function AuthProvider({ children }) {
         userData?.user?.user_metadata?.username ||
         userData?.user?.email?.split('@')[0] ||
         'user'
+      // ignoreDuplicates: true で既存のrole(admin等)を上書きしない
       const { data: created } = await supabase
         .from('profiles')
-        .upsert({ id: userId, username, role: 'user' })
+        .upsert({ id: userId, username, role: 'user' }, { onConflict: 'id', ignoreDuplicates: true })
         .select()
         .single()
       data = created
     }
 
+    console.log('[Auth] profile loaded:', data?.username, 'role:', data?.role)
     setProfile(data)
     setLoading(false)
   }

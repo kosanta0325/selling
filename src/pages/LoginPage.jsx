@@ -1,9 +1,9 @@
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
 import { useAuth } from '../context/AuthContext'
 
 export default function LoginPage() {
-  const { signIn } = useAuth()
+  const { signIn, user, profile } = useAuth()
   const navigate = useNavigate()
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
@@ -11,16 +11,23 @@ export default function LoginPage() {
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState('')
 
+  // profile がロードされてからロールに応じてリダイレクト
+  useEffect(() => {
+    if (user && profile) {
+      if (profile.role === 'admin') navigate('/admin', { replace: true })
+      else navigate('/', { replace: true })
+    }
+  }, [user, profile])
+
   async function handleSubmit(e) {
     e.preventDefault()
     setError('')
     setLoading(true)
     try {
       await signIn({ email, password })
-      navigate('/')
+      // navigate はuseEffectで profile ロード後に行う
     } catch {
       setError('メールアドレスまたはパスワードが正しくありません')
-    } finally {
       setLoading(false)
     }
   }

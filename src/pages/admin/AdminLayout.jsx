@@ -17,6 +17,11 @@ export default function AdminLayout() {
     navigate('/login')
   }
 
+  function goToUserSite() {
+    sessionStorage.setItem('adminUserView', 'true')
+    navigate('/')
+  }
+
   return (
     <div style={s.wrapper}>
       <aside style={s.sidebar}>
@@ -52,7 +57,7 @@ export default function AdminLayout() {
               </div>
             </div>
           )}
-          <Link to="/" style={s.footerLink}>← サイトに戻る</Link>
+          <button onClick={goToUserSite} style={s.userSiteBtn}>↗ 一般サイトを見る</button>
           <button onClick={handleLogout} style={s.logoutBtn}>ログアウト</button>
         </div>
       </aside>
@@ -81,7 +86,7 @@ const s = {
   adminAvatar: { width: 30, height: 30, borderRadius: '50%', background: 'linear-gradient(135deg,#7c3aed,#0891b2)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 12, fontWeight: 700, color: '#fff', flexShrink: 0 },
   adminName: { fontSize: 12, fontWeight: 600, color: '#94a3b8' },
   adminRole: { fontSize: 10, color: '#8b5cf6', fontWeight: 600 },
-  footerLink: { display: 'block', padding: '8px 12px', borderRadius: 8, fontSize: 12, color: '#475569', fontWeight: 500, textDecoration: 'none' },
+  userSiteBtn: { padding: '8px 12px', borderRadius: 8, fontSize: 12, color: '#22d3ee', background: 'rgba(34,211,238,0.06)', border: '1px solid rgba(34,211,238,0.2)', cursor: 'pointer', textAlign: 'left', fontWeight: 500 },
   logoutBtn: { padding: '8px 12px', borderRadius: 8, fontSize: 12, color: '#f87171', background: 'rgba(248,113,113,0.06)', border: '1px solid rgba(248,113,113,0.15)', cursor: 'pointer', textAlign: 'left', fontWeight: 500 },
   main: { flex: 1, overflowX: 'hidden', backgroundColor: '#05050f' },
 }

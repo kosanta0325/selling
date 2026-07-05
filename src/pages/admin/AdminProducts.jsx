@@ -29,7 +29,7 @@ export default function AdminProducts() {
 
   async function approve(id) {
     const { error } = await supabase.from('products').update({ status: 'active' }).eq('id', id)
-    if (error) { showToast('更新に失敗しました', 'error'); return }
+    if (error) { showToast(`更新失敗: ${error.message}`, 'error'); return }
     setProducts(prev => prev.map(p => p.id === id ? { ...p, status: 'active' } : p))
     if (selected?.id === id) setSelected(prev => ({ ...prev, status: 'active' }))
     const p = products.find(p => p.id === id)
@@ -38,7 +38,7 @@ export default function AdminProducts() {
 
   async function reject(id) {
     const { error } = await supabase.from('products').update({ status: 'rejected' }).eq('id', id)
-    if (error) { showToast('更新に失敗しました', 'error'); return }
+    if (error) { showToast(`更新失敗: ${error.message}`, 'error'); return }
     setProducts(prev => prev.map(p => p.id === id ? { ...p, status: 'rejected' } : p))
     if (selected?.id === id) setSelected(prev => ({ ...prev, status: 'rejected' }))
     setRejectModal(null)
@@ -48,7 +48,7 @@ export default function AdminProducts() {
 
   async function takedown(id) {
     const { error } = await supabase.from('products').update({ status: 'pending' }).eq('id', id)
-    if (error) { showToast('更新に失敗しました', 'error'); return }
+    if (error) { showToast(`更新失敗: ${error.message}`, 'error'); return }
     setProducts(prev => prev.map(p => p.id === id ? { ...p, status: 'pending' } : p))
     if (selected?.id === id) setSelected(prev => ({ ...prev, status: 'pending' }))
     showToast(`非公開にしました`, 'warning')

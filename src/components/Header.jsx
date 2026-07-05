@@ -28,6 +28,11 @@ export default function Header() {
     navigate('/login')
   }
 
+  function goToAdmin() {
+    sessionStorage.removeItem('adminUserView')
+    navigate('/admin')
+  }
+
   return (
     <>
       <header style={styles.header}>
@@ -57,6 +62,9 @@ export default function Header() {
               </Link>
               {profile && (
                 <div style={styles.userArea}>
+                  {profile.role === 'admin' && (
+                    <button style={styles.adminBtn} onClick={goToAdmin}>管理者画面</button>
+                  )}
                   <span style={styles.username}>👤 {profile.username}</span>
                   <button style={styles.logoutBtn} onClick={handleSignOut}>ログアウト</button>
                 </div>
@@ -200,6 +208,11 @@ const styles = {
   userArea: {
     display: 'flex', alignItems: 'center', gap: 8, marginLeft: 4,
     paddingLeft: 12, borderLeft: '1px solid rgba(255,255,255,0.08)',
+  },
+  adminBtn: {
+    padding: '6px 12px', borderRadius: 7, fontSize: 12, fontWeight: 600,
+    color: '#a78bfa', background: 'rgba(167,139,250,0.1)',
+    border: '1px solid rgba(167,139,250,0.3)', cursor: 'pointer',
   },
   username: { fontSize: 13, color: '#64748b' },
   logoutBtn: {
