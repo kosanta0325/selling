@@ -39,9 +39,6 @@ export default function Header() {
         <div style={styles.inner}>
           {/* Logo */}
           <Link to="/" style={styles.logo}>
-            <div style={styles.logoIcon}>
-              <span style={styles.logoEmoji}>⬡</span>
-            </div>
             <span style={styles.logoText}>Ichib<span style={styles.logoAccent}>A</span></span>
           </Link>
 

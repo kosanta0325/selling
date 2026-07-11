@@ -41,7 +41,7 @@ export default function SignupPage() {
   if (done) return (
     <div style={s.page}>
       <div style={s.card}>
-        <div style={s.logo}><div style={s.logoIcon}>⬡</div><span style={s.logoText}>Ichib<span style={s.accent}>A</span></span></div>
+        <div style={s.logo}><span style={s.logoText}>Ichib<span style={s.accent}>A</span></span></div>
         <div style={{ fontSize: 48, textAlign: 'center', marginBottom: 16 }}>✉️</div>
         <h2 style={s.title}>確認メールを送信しました</h2>
         <p style={{ fontSize: 14, color: '#5A6180', textAlign: 'center', lineHeight: 1.7, marginBottom: 28 }}>
@@ -55,7 +55,7 @@ export default function SignupPage() {
   return (
     <div style={s.page}>
       <div style={s.card}>
-        <div style={s.logo}><div style={s.logoIcon}>⬡</div><span style={s.logoText}>Ichib<span style={s.accent}>A</span></span></div>
+        <div style={s.logo}><span style={s.logoText}>Ichib<span style={s.accent}>A</span></span></div>
         <h1 style={s.title}>アカウント登録</h1>
         <p style={s.subtitle}>無料でアカウントを作成できます</p>
         {error && <div style={s.errorBox}>{error}</div>}

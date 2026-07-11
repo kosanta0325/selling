@@ -36,7 +36,6 @@ export default function LoginPage() {
     <div style={s.page}>
       <div style={s.card}>
         <div style={s.logo}>
-          <div style={s.logoIcon}>⬡</div>
           <span style={s.logoText}>Ichib<span style={s.accent}>A</span></span>
         </div>
         <h1 style={s.title}>ログイン</h1>
