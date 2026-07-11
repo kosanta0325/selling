@@ -26,9 +26,8 @@ export default function AdminLayout() {
     <div style={s.wrapper}>
       <aside style={s.sidebar}>
         <div style={s.sidebarLogo}>
-          <div style={s.logoMark}>⬡</div>
           <div>
-            <div style={s.logoTitle}>AI Market</div>
+            <div style={s.logoTitle}>Ichib<span style={s.logoAccent}>A</span></div>
             <div style={s.logoSub}>管理画面</div>
           </div>
         </div>
@@ -74,7 +73,8 @@ const s = {
   sidebar: { width: 220, backgroundColor: '#fff', borderRight: '1px solid #D8DCE9', display: 'flex', flexDirection: 'column', flexShrink: 0, position: 'sticky', top: 0, height: '100vh', overflowY: 'auto' },
   sidebarLogo: { display: 'flex', alignItems: 'center', gap: 10, padding: '24px 20px 20px', borderBottom: '1px solid #D8DCE9', marginBottom: 8 },
   logoMark: { width: 34, height: 34, background: '#2438A6', borderRadius: 9, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 16, color: '#fff', flexShrink: 0 },
-  logoTitle: { fontSize: 14, fontWeight: 800, color: '#101B3E', lineHeight: 1.2, fontFamily: "'Sora', sans-serif" },
+  logoTitle: { fontSize: 18, fontWeight: 800, color: '#101B3E', lineHeight: 1.2, fontFamily: "'Sora', sans-serif" },
+  logoAccent: { color: '#E8542F' },
   logoSub: { fontSize: 10, color: '#8A90A8', letterSpacing: '0.06em', fontWeight: 600 },
   nav: { padding: '8px 12px', flex: 1, display: 'flex', flexDirection: 'column', gap: 2 },
   navItem: { display: 'flex', alignItems: 'center', gap: 10, padding: '10px 12px', borderRadius: 9, fontSize: 13, fontWeight: 500, color: '#5A6180', transition: 'all 0.15s', textDecoration: 'none' },
