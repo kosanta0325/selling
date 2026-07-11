@@ -37,7 +37,7 @@ export default function LoginPage() {
       <div style={s.card}>
         <div style={s.logo}>
           <div style={s.logoIcon}>⬡</div>
-          <span style={s.logoText}>AI<span style={s.accent}>Market</span></span>
+          <span style={s.logoText}>Ichib<span style={s.accent}>A</span></span>
         </div>
         <h1 style={s.title}>ログイン</h1>
         <p style={s.subtitle}>アカウントにサインインしてください</p>
@@ -70,7 +70,7 @@ const s = {
   logo: { display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 10, marginBottom: 28 },
   logoIcon: { width: 36, height: 36, background: '#2438A6', borderRadius: 10, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 18, color: '#fff', fontWeight: 900 },
   logoText: { fontSize: 22, fontWeight: 800, color: '#101B3E', fontFamily: "'Sora', sans-serif" },
-  accent: { color: '#2438A6' },
+  accent: { color: '#E8542F' },
   title: { fontSize: 22, fontWeight: 700, color: '#101B3E', textAlign: 'center', margin: '0 0 6px', fontFamily: "'Sora', sans-serif" },
   subtitle: { fontSize: 13, color: '#5A6180', textAlign: 'center', margin: '0 0 28px' },
   errorBox: { background: 'rgba(232,84,47,0.06)', border: '1px solid rgba(232,84,47,0.3)', borderRadius: 8, padding: '10px 14px', fontSize: 13, color: '#E8542F', marginBottom: 20 },

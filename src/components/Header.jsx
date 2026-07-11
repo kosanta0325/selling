@@ -42,7 +42,7 @@ export default function Header() {
             <div style={styles.logoIcon}>
               <span style={styles.logoEmoji}>⬡</span>
             </div>
-            <span style={styles.logoText}>AI<span style={styles.logoAccent}>Market</span></span>
+            <span style={styles.logoText}>Ichib<span style={styles.logoAccent}>A</span></span>
           </Link>
 
           {/* Desktop nav */}
@@ -168,7 +168,7 @@ const styles = {
   },
   logoEmoji: { color: '#fff', fontSize: 16, fontWeight: 900 },
   logoText: { fontSize: 20, fontWeight: 800, color: '#101B3E', letterSpacing: '-0.5px', fontFamily: "'Sora', sans-serif" },
-  logoAccent: { color: '#2438A6' },
+  logoAccent: { color: '#E8542F' },
   nav: { display: 'flex', alignItems: 'center', gap: 8 },
   navLink: {
     padding: '8px 14px',
