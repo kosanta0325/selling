@@ -1,4 +1,4 @@
-import { useState, useRef } from 'react'
+import { useState, useRef, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useProducts } from '../context/ProductContext.jsx'
 import { useAuth } from '../context/AuthContext.jsx'
@@ -15,12 +15,84 @@ const PAYMENT_OPTIONS = [
 
 const CATEGORIES = ['テキスト生成', '画像生成', 'マーケティング', '開発支援', 'データ分析', 'その他']
 
+const ACCOUNT_TYPES = ['普通', '当座']
+
 export default function SellerPage() {
   const navigate = useNavigate()
   const { refreshProducts } = useProducts()
-  const { user } = useAuth()
+  const { user, profile } = useAuth()
   const fileInputRef = useRef(null)
 
+  // ── 銀行口座 ──
+  const [bank, setBank] = useState({ bank_name: '', bank_branch: '', account_type: '普通', account_number: '', account_holder: '' })
+  const [bankEditing, setBankEditing] = useState(false)
+  const [bankSaving, setBankSaving] = useState(false)
+  const [bankToast, setBankToast] = useState(null)
+  const [bankErrors, setBankErrors] = useState({})
+  const [bankLoaded, setBankLoaded] = useState(false)
+
+  useEffect(() => {
+    if (profile && !bankLoaded) {
+      setBank({
+        bank_name:    profile.bank_name    || '',
+        bank_branch:  profile.bank_branch  || '',
+        account_type: profile.account_type || '普通',
+        account_number: profile.account_number || '',
+        account_holder: profile.account_holder || '',
+      })
+      setBankLoaded(true)
+      if (!profile.bank_name) setBankEditing(true)
+    }
+  }, [profile, bankLoaded])
+
+  const showBankToast = (msg, type = 'success') => {
+    setBankToast({ msg, type })
+    setTimeout(() => setBankToast(null), 3000)
+  }
+
+  const validateBank = () => {
+    const e = {}
+    if (!bank.bank_name.trim())    e.bank_name    = '銀行名を入力してください'
+    if (!bank.bank_branch.trim())  e.bank_branch  = '支店名を入力してください'
+    if (!bank.account_number.trim() || !/^\d{7}$/.test(bank.account_number.trim()))
+      e.account_number = '口座番号は7桁の数字で入力してください'
+    if (!bank.account_holder.trim()) e.account_holder = '口座名義（カナ）を入力してください'
+    return e
+  }
+
+  const saveBank = async () => {
+    const errs = validateBank()
+    if (Object.keys(errs).length > 0) { setBankErrors(errs); return }
+    setBankSaving(true)
+    const { error } = await supabase.from('profiles').update({
+      bank_name:      bank.bank_name.trim(),
+      bank_branch:    bank.bank_branch.trim(),
+      account_type:   bank.account_type,
+      account_number: bank.account_number.trim(),
+      account_holder: bank.account_holder.trim(),
+    }).eq('id', user.id)
+    setBankSaving(false)
+    if (error) { showBankToast('保存に失敗しました', 'error'); return }
+    setBankEditing(false)
+    setBankErrors({})
+    showBankToast('口座情報を保存しました')
+  }
+
+  const cancelBank = () => {
+    if (profile) {
+      setBank({
+        bank_name:    profile.bank_name    || '',
+        bank_branch:  profile.bank_branch  || '',
+        account_type: profile.account_type || '普通',
+        account_number: profile.account_number || '',
+        account_holder: profile.account_holder || '',
+      })
+    }
+    setBankErrors({})
+    setBankEditing(false)
+  }
+
+  // ── 出品フォーム ──
   const [form, setForm] = useState({
     title: '',
     category: '',
@@ -144,10 +216,138 @@ export default function SellerPage() {
 
   return (
     <div style={styles.container}>
+      {bankToast && (
+        <div style={{ ...styles.bankToast, ...(bankToast.type === 'error' ? styles.bankToastError : {}) }}>
+          {bankToast.type === 'error' ? '⛔ ' : '✓ '}{bankToast.msg}
+        </div>
+      )}
+
       <div style={styles.headerSection}>
         <div style={styles.headerBadge}>⬡ 新規出品</div>
         <h1 style={styles.pageTitle}>AIツールを出品する</h1>
         <p style={styles.pageSubtitle}>あなたが作ったAIツールを世界に届けよう</p>
+      </div>
+
+      {/* ── 銀行口座カード ── */}
+      <div style={styles.bankCard}>
+        <div style={styles.bankCardHeader}>
+          <div style={styles.bankCardTitle}>
+            <span style={styles.bankIcon}>🏦</span>
+            <div>
+              <div style={styles.bankTitleText}>売上の振込先口座</div>
+              <div style={styles.bankTitleSub}>売上が発生した際にこの口座へ送金します</div>
+            </div>
+          </div>
+          {!bankEditing && bank.bank_name && (
+            <button type="button" onClick={() => setBankEditing(true)} style={styles.bankEditBtn}>編集</button>
+          )}
+        </div>
+
+        {!bankEditing ? (
+          bank.bank_name ? (
+            <div style={styles.bankDisplay}>
+              <div style={styles.bankDisplayRow}>
+                <span style={styles.bankDisplayLabel}>銀行名</span>
+                <span style={styles.bankDisplayVal}>{bank.bank_name}　{bank.bank_branch}支店</span>
+              </div>
+              <div style={styles.bankDisplayRow}>
+                <span style={styles.bankDisplayLabel}>口座種別</span>
+                <span style={styles.bankDisplayVal}>{bank.account_type}</span>
+              </div>
+              <div style={styles.bankDisplayRow}>
+                <span style={styles.bankDisplayLabel}>口座番号</span>
+                <span style={styles.bankDisplayVal}>{'*'.repeat(4)}{bank.account_number.slice(-3)}</span>
+              </div>
+              <div style={styles.bankDisplayRow}>
+                <span style={styles.bankDisplayLabel}>名義（カナ）</span>
+                <span style={styles.bankDisplayVal}>{bank.account_holder}</span>
+              </div>
+            </div>
+          ) : (
+            <div style={styles.bankEmpty}>
+              <p style={styles.bankEmptyText}>まだ振込先口座が登録されていません</p>
+              <button type="button" onClick={() => setBankEditing(true)} style={styles.bankRegisterBtn}>口座を登録する</button>
+            </div>
+          )
+        ) : (
+          <div style={styles.bankForm}>
+            <div style={styles.bankRow}>
+              <div style={styles.bankField}>
+                <label style={styles.bankLabel}>銀行名 <span style={styles.required}>必須</span></label>
+                <input
+                  type="text"
+                  value={bank.bank_name}
+                  onChange={e => { setBank(p => ({ ...p, bank_name: e.target.value })); setBankErrors(p => ({ ...p, bank_name: '' })) }}
+                  placeholder="例：三菱UFJ銀行"
+                  style={{ ...styles.input, ...(bankErrors.bank_name ? styles.inputError : {}) }}
+                />
+                {bankErrors.bank_name && <span style={styles.error}>{bankErrors.bank_name}</span>}
+              </div>
+              <div style={styles.bankField}>
+                <label style={styles.bankLabel}>支店名 <span style={styles.required}>必須</span></label>
+                <input
+                  type="text"
+                  value={bank.bank_branch}
+                  onChange={e => { setBank(p => ({ ...p, bank_branch: e.target.value })); setBankErrors(p => ({ ...p, bank_branch: '' })) }}
+                  placeholder="例：渋谷支店"
+                  style={{ ...styles.input, ...(bankErrors.bank_branch ? styles.inputError : {}) }}
+                />
+                {bankErrors.bank_branch && <span style={styles.error}>{bankErrors.bank_branch}</span>}
+              </div>
+            </div>
+
+            <div style={styles.bankRow}>
+              <div style={{ ...styles.bankField, maxWidth: 140 }}>
+                <label style={styles.bankLabel}>口座種別</label>
+                <select
+                  value={bank.account_type}
+                  onChange={e => setBank(p => ({ ...p, account_type: e.target.value }))}
+                  style={styles.input}
+                >
+                  {ACCOUNT_TYPES.map(t => <option key={t} value={t}>{t}</option>)}
+                </select>
+              </div>
+              <div style={styles.bankField}>
+                <label style={styles.bankLabel}>口座番号（7桁）<span style={styles.required}>必須</span></label>
+                <input
+                  type="text"
+                  value={bank.account_number}
+                  onChange={e => { setBank(p => ({ ...p, account_number: e.target.value.replace(/\D/g, '').slice(0, 7) })); setBankErrors(p => ({ ...p, account_number: '' })) }}
+                  placeholder="1234567"
+                  maxLength={7}
+                  inputMode="numeric"
+                  style={{ ...styles.input, ...(bankErrors.account_number ? styles.inputError : {}), letterSpacing: '0.15em' }}
+                />
+                {bankErrors.account_number && <span style={styles.error}>{bankErrors.account_number}</span>}
+              </div>
+            </div>
+
+            <div style={styles.bankField}>
+              <label style={styles.bankLabel}>口座名義（カナ） <span style={styles.required}>必須</span></label>
+              <input
+                type="text"
+                value={bank.account_holder}
+                onChange={e => { setBank(p => ({ ...p, account_holder: e.target.value })); setBankErrors(p => ({ ...p, account_holder: '' })) }}
+                placeholder="例：ヤマダ タロウ"
+                style={{ ...styles.input, ...(bankErrors.account_holder ? styles.inputError : {}) }}
+              />
+              {bankErrors.account_holder && <span style={styles.error}>{bankErrors.account_holder}</span>}
+            </div>
+
+            <div style={styles.bankNote}>
+              ⚠ 口座番号・名義は正確に入力してください。誤った情報による振込ミスは対応できません。
+            </div>
+
+            <div style={styles.bankActions}>
+              <button type="button" onClick={saveBank} disabled={bankSaving} style={{ ...styles.bankSaveBtn, opacity: bankSaving ? 0.7 : 1 }}>
+                {bankSaving ? '保存中...' : '保存する'}
+              </button>
+              {bank.bank_name && (
+                <button type="button" onClick={cancelBank} style={styles.bankCancelBtn}>キャンセル</button>
+              )}
+            </div>
+          </div>
+        )}
       </div>
 
       <form onSubmit={handleSubmit} style={styles.form}>
@@ -340,6 +540,30 @@ export default function SellerPage() {
 
 const styles = {
   container: { maxWidth: 680, margin: '0 auto', padding: '40px 24px 80px' },
+  bankToast: { position: 'fixed', top: 24, right: 24, zIndex: 999, padding: '12px 20px', borderRadius: 10, background: 'rgba(36,56,166,0.08)', border: '1px solid rgba(36,56,166,0.25)', color: '#2438A6', fontSize: 13, fontWeight: 600 },
+  bankToastError: { background: 'rgba(232,84,47,0.08)', border: '1px solid rgba(232,84,47,0.25)', color: '#E8542F' },
+  bankCard: { background: '#fff', border: '1px solid #D8DCE9', borderRadius: 16, padding: '22px 24px', marginBottom: 32 },
+  bankCardHeader: { display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', marginBottom: 16 },
+  bankCardTitle: { display: 'flex', alignItems: 'flex-start', gap: 12 },
+  bankIcon: { fontSize: 22, lineHeight: 1, marginTop: 2 },
+  bankTitleText: { fontSize: 14, fontWeight: 700, color: '#101B3E', marginBottom: 3 },
+  bankTitleSub: { fontSize: 12, color: '#8A90A8' },
+  bankEditBtn: { padding: '6px 14px', borderRadius: 8, fontSize: 12, fontWeight: 600, color: '#2438A6', background: 'rgba(36,56,166,0.07)', border: '1px solid rgba(36,56,166,0.2)', cursor: 'pointer', flexShrink: 0 },
+  bankDisplay: { display: 'flex', flexDirection: 'column', gap: 8, background: '#F6F7F4', borderRadius: 10, padding: '14px 16px' },
+  bankDisplayRow: { display: 'flex', gap: 12, fontSize: 13 },
+  bankDisplayLabel: { color: '#8A90A8', width: 100, flexShrink: 0 },
+  bankDisplayVal: { color: '#101B3E', fontWeight: 600 },
+  bankEmpty: { textAlign: 'center', padding: '20px 0 4px' },
+  bankEmptyText: { fontSize: 13, color: '#8A90A8', marginBottom: 14 },
+  bankRegisterBtn: { padding: '10px 24px', borderRadius: 9, fontSize: 13, fontWeight: 700, color: '#fff', background: '#2438A6', border: 'none', cursor: 'pointer' },
+  bankForm: { display: 'flex', flexDirection: 'column', gap: 14 },
+  bankRow: { display: 'flex', gap: 12 },
+  bankField: { display: 'flex', flexDirection: 'column', gap: 6, flex: 1 },
+  bankLabel: { fontSize: 12, fontWeight: 600, color: '#5A6180', display: 'flex', alignItems: 'center', gap: 6 },
+  bankNote: { fontSize: 11, color: '#d97706', background: 'rgba(217,119,6,0.06)', border: '1px solid rgba(217,119,6,0.18)', borderRadius: 8, padding: '9px 12px', lineHeight: 1.6 },
+  bankActions: { display: 'flex', gap: 10, paddingTop: 4 },
+  bankSaveBtn: { padding: '10px 24px', borderRadius: 9, fontSize: 13, fontWeight: 700, color: '#fff', background: '#2438A6', border: 'none', cursor: 'pointer' },
+  bankCancelBtn: { padding: '10px 20px', borderRadius: 9, fontSize: 13, color: '#5A6180', background: 'transparent', border: '1px solid #D8DCE9', cursor: 'pointer' },
   headerSection: { marginBottom: 36 },
   headerBadge: {
     display: 'inline-block', padding: '5px 14px', borderRadius: 20,
