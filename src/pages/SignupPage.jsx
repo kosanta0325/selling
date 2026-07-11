@@ -44,10 +44,10 @@ export default function SignupPage() {
         <div style={s.logo}><div style={s.logoIcon}>⬡</div><span style={s.logoText}>AI<span style={s.accent}>Market</span></span></div>
         <div style={{ fontSize: 48, textAlign: 'center', marginBottom: 16 }}>✉️</div>
         <h2 style={s.title}>確認メールを送信しました</h2>
-        <p style={{ fontSize: 14, color: '#94a3b8', textAlign: 'center', lineHeight: 1.7, marginBottom: 28 }}>
-          <strong style={{ color: '#a78bfa' }}>{email}</strong> に確認メールを送りました。メール内のリンクをクリックして登録を完了してください。
+        <p style={{ fontSize: 14, color: '#5A6180', textAlign: 'center', lineHeight: 1.7, marginBottom: 28 }}>
+          <strong style={{ color: '#2438A6' }}>{email}</strong> に確認メールを送りました。メール内のリンクをクリックして登録を完了してください。
         </p>
-        <Link to="/login" style={{ display: 'block', textAlign: 'center', color: '#a78bfa', fontWeight: 600, fontSize: 14, textDecoration: 'none' }}>ログインページへ →</Link>
+        <Link to="/login" style={{ display: 'block', textAlign: 'center', color: '#2438A6', fontWeight: 600, fontSize: 14, textDecoration: 'none' }}>ログインページへ →</Link>
       </div>
     </div>
   )
@@ -77,7 +77,7 @@ export default function SignupPage() {
             {password.length > 0 && (
               <div style={s.rules}>
                 {passwordRules.map(r => (
-                  <div key={r.label} style={{ fontSize: 12, color: r.test(password) ? '#34d399' : '#64748b', transition: 'color 0.2s' }}>
+                  <div key={r.label} style={{ fontSize: 12, color: r.test(password) ? '#2438A6' : '#8A90A8', transition: 'color 0.2s' }}>
                     {r.test(password) ? '✓' : '○'} {r.label}
                   </div>
                 ))}
@@ -99,23 +99,23 @@ export default function SignupPage() {
 }
 
 const s = {
-  page: { minHeight: '100vh', background: 'linear-gradient(135deg, #05050f 0%, #0d0d1f 50%, #05050f 100%)', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '24px 16px' },
-  card: { width: '100%', maxWidth: 420, background: 'rgba(255,255,255,0.03)', border: '1px solid rgba(139,92,246,0.2)', borderRadius: 20, padding: '40px 36px', boxShadow: '0 0 60px rgba(139,92,246,0.08)' },
+  page: { minHeight: '100vh', background: '#F6F7F4', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '24px 16px' },
+  card: { width: '100%', maxWidth: 420, background: '#fff', border: '1px solid #D8DCE9', borderRadius: 20, padding: '40px 36px', boxShadow: '0 4px 24px rgba(16,27,62,0.08)' },
   logo: { display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 10, marginBottom: 28 },
-  logoIcon: { width: 36, height: 36, background: 'linear-gradient(135deg, #8b5cf6, #22d3ee)', borderRadius: 10, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 18, color: '#fff', fontWeight: 900, boxShadow: '0 0 20px rgba(139,92,246,0.4)' },
-  logoText: { fontSize: 22, fontWeight: 800, color: '#e2e8f0' },
-  accent: { background: 'linear-gradient(90deg, #a78bfa, #22d3ee)', WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent', backgroundClip: 'text' },
-  title: { fontSize: 22, fontWeight: 700, color: '#e2e8f0', textAlign: 'center', margin: '0 0 6px' },
-  subtitle: { fontSize: 13, color: '#64748b', textAlign: 'center', margin: '0 0 28px' },
-  errorBox: { background: 'rgba(239,68,68,0.1)', border: '1px solid rgba(239,68,68,0.3)', borderRadius: 8, padding: '10px 14px', fontSize: 13, color: '#f87171', marginBottom: 20 },
+  logoIcon: { width: 36, height: 36, background: '#2438A6', borderRadius: 10, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 18, color: '#fff', fontWeight: 900 },
+  logoText: { fontSize: 22, fontWeight: 800, color: '#101B3E', fontFamily: "'Sora', sans-serif" },
+  accent: { color: '#2438A6' },
+  title: { fontSize: 22, fontWeight: 700, color: '#101B3E', textAlign: 'center', margin: '0 0 6px', fontFamily: "'Sora', sans-serif" },
+  subtitle: { fontSize: 13, color: '#5A6180', textAlign: 'center', margin: '0 0 28px' },
+  errorBox: { background: 'rgba(232,84,47,0.06)', border: '1px solid rgba(232,84,47,0.3)', borderRadius: 8, padding: '10px 14px', fontSize: 13, color: '#E8542F', marginBottom: 20 },
   form: { display: 'flex', flexDirection: 'column', gap: 16 },
   field: { display: 'flex', flexDirection: 'column', gap: 6 },
-  label: { fontSize: 13, fontWeight: 500, color: '#94a3b8' },
-  input: { width: '100%', background: 'rgba(255,255,255,0.05)', border: '1px solid rgba(255,255,255,0.1)', borderRadius: 10, padding: '12px 14px', fontSize: 14, color: '#e2e8f0', outline: 'none', boxSizing: 'border-box' },
+  label: { fontSize: 13, fontWeight: 500, color: '#5A6180' },
+  input: { width: '100%', background: '#F6F7F4', border: '1px solid #D8DCE9', borderRadius: 10, padding: '12px 14px', fontSize: 14, color: '#101B3E', outline: 'none', boxSizing: 'border-box' },
   passWrap: { position: 'relative' },
   eyeBtn: { position: 'absolute', right: 12, top: '50%', transform: 'translateY(-50%)', background: 'none', border: 'none', cursor: 'pointer', fontSize: 16, padding: 0 },
-  rules: { display: 'flex', flexDirection: 'column', gap: 4, marginTop: 8, padding: '10px 12px', background: 'rgba(255,255,255,0.03)', borderRadius: 8, border: '1px solid rgba(255,255,255,0.06)' },
-  submitBtn: { width: '100%', padding: '13px', borderRadius: 10, fontSize: 15, fontWeight: 700, color: '#fff', background: 'linear-gradient(135deg, #8b5cf6, #6d28d9)', border: 'none', cursor: 'pointer', marginTop: 4, boxShadow: '0 0 20px rgba(139,92,246,0.3)' },
-  footer: { fontSize: 13, color: '#64748b', textAlign: 'center', marginTop: 24 },
-  link: { color: '#a78bfa', textDecoration: 'none', fontWeight: 600 },
+  rules: { display: 'flex', flexDirection: 'column', gap: 4, marginTop: 8, padding: '10px 12px', background: '#F6F7F4', borderRadius: 8, border: '1px solid #D8DCE9' },
+  submitBtn: { width: '100%', padding: '13px', borderRadius: 10, fontSize: 15, fontWeight: 700, color: '#fff', background: '#2438A6', border: 'none', cursor: 'pointer', marginTop: 4 },
+  footer: { fontSize: 13, color: '#5A6180', textAlign: 'center', marginTop: 24 },
+  link: { color: '#2438A6', textDecoration: 'none', fontWeight: 600 },
 }

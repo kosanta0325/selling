@@ -16,14 +16,14 @@ import { useAuth } from './context/AuthContext.jsx'
 
 function PrivateRoute({ children }) {
   const { user, loading } = useAuth()
-  if (loading) return <div style={{ minHeight: '100vh', background: '#05050f' }} />
+  if (loading) return <div style={{ minHeight: '100vh', background: '#F6F7F4' }} />
   if (!user) return <Navigate to="/login" replace />
   return children
 }
 
 function AdminRoute({ children }) {
   const { user, profile, loading } = useAuth()
-  if (loading) return <div style={{ minHeight: '100vh', background: '#05050f' }} />
+  if (loading) return <div style={{ minHeight: '100vh', background: '#F6F7F4' }} />
   if (!user) return <Navigate to="/login" replace />
   if (profile && profile.role !== 'admin') return <Navigate to="/" replace />
   return children
@@ -31,7 +31,7 @@ function AdminRoute({ children }) {
 
 function HomeRedirect() {
   const { profile, loading } = useAuth()
-  if (loading) return <div style={{ minHeight: '100vh', background: '#05050f' }} />
+  if (loading) return <div style={{ minHeight: '100vh', background: '#F6F7F4' }} />
   if (profile?.role === 'admin' && !sessionStorage.getItem('adminUserView')) {
     return <Navigate to="/admin" replace />
   }
