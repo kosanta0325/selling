@@ -70,9 +70,9 @@ export default function AdminProducts() {
       <div style={s.pageHeader}>
         <h1 style={s.pageTitle}>商品審査・管理</h1>
         <div style={s.headerStats}>
-          <span style={{ ...s.stat, color: '#fb923c' }}>審査待ち <b>{pending.length}</b></span>
-          <span style={{ ...s.stat, color: '#34d399' }}>公開中 <b>{active.length}</b></span>
-          <span style={{ ...s.stat, color: '#f87171' }}>差し戻し <b>{rejected.length}</b></span>
+          <span style={{ ...s.stat, color: '#d97706' }}>審査待ち <b>{pending.length}</b></span>
+          <span style={{ ...s.stat, color: '#16a34a' }}>公開中 <b>{active.length}</b></span>
+          <span style={{ ...s.stat, color: '#E8542F' }}>差し戻し <b>{rejected.length}</b></span>
         </div>
       </div>
 
@@ -103,7 +103,7 @@ export default function AdminProducts() {
                 {p.image_urls?.[0] ? (
                   <img src={p.image_urls[0]} alt="" style={s.thumb} />
                 ) : (
-                  <div style={{ ...s.thumb, background: 'rgba(139,92,246,0.1)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 18 }}>🤖</div>
+                  <div style={{ ...s.thumb, background: 'rgba(36,56,166,0.07)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 18 }}>🤖</div>
                 )}
                 <div style={s.productInfo}>
                   <div style={s.productTitle}>{p.title}</div>
@@ -183,42 +183,42 @@ export default function AdminProducts() {
 
 const s = {
   container: { padding: '32px 36px', maxWidth: 1100, margin: '0 auto' },
-  toast: { position: 'fixed', top: 24, right: 24, zIndex: 999, padding: '12px 20px', borderRadius: 10, background: 'rgba(52,211,153,0.15)', border: '1px solid rgba(52,211,153,0.3)', color: '#34d399', fontSize: 13, fontWeight: 600 },
-  toastWarn:  { background: 'rgba(251,146,60,0.15)',  border: '1px solid rgba(251,146,60,0.3)',  color: '#fb923c' },
-  toastError: { background: 'rgba(248,113,113,0.15)', border: '1px solid rgba(248,113,113,0.3)', color: '#f87171' },
+  toast: { position: 'fixed', top: 24, right: 24, zIndex: 999, padding: '12px 20px', borderRadius: 10, background: 'rgba(22,163,74,0.1)', border: '1px solid rgba(22,163,74,0.25)', color: '#16a34a', fontSize: 13, fontWeight: 600 },
+  toastWarn:  { background: 'rgba(217,119,6,0.1)',  border: '1px solid rgba(217,119,6,0.25)',  color: '#d97706' },
+  toastError: { background: 'rgba(232,84,47,0.1)', border: '1px solid rgba(232,84,47,0.25)', color: '#E8542F' },
   pageHeader: { display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 24 },
-  pageTitle: { fontSize: 24, fontWeight: 800, color: '#e2e8f0' },
+  pageTitle: { fontSize: 24, fontWeight: 800, color: '#101B3E', fontFamily: "'Sora', sans-serif" },
   headerStats: { display: 'flex', gap: 16 },
-  stat: { fontSize: 13, color: '#475569' },
-  tabs: { display: 'flex', gap: 4, marginBottom: 20, borderBottom: '1px solid rgba(139,92,246,0.1)', paddingBottom: 0 },
-  tab: { padding: '8px 16px', background: 'none', border: 'none', color: '#64748b', fontSize: 13, fontWeight: 600, cursor: 'pointer', borderBottom: '2px solid transparent', marginBottom: -1 },
-  tabActive: { color: '#a78bfa', borderBottomColor: '#8b5cf6' },
+  stat: { fontSize: 13, color: '#5A6180' },
+  tabs: { display: 'flex', gap: 4, marginBottom: 20, borderBottom: '1px solid #D8DCE9', paddingBottom: 0 },
+  tab: { padding: '8px 16px', background: 'none', border: 'none', color: '#5A6180', fontSize: 13, fontWeight: 600, cursor: 'pointer', borderBottom: '2px solid transparent', marginBottom: -1 },
+  tabActive: { color: '#2438A6', borderBottomColor: '#2438A6' },
   layout: { display: 'grid', gridTemplateColumns: '1fr 340px', gap: 20, alignItems: 'start' },
-  listPanel: { background: 'rgba(255,255,255,0.02)', border: '1px solid rgba(139,92,246,0.1)', borderRadius: 16, overflow: 'hidden', maxHeight: 560, overflowY: 'auto' },
-  empty: { padding: '40px', textAlign: 'center', color: '#334155', fontSize: 13 },
-  productRow: { display: 'flex', alignItems: 'center', gap: 12, padding: '12px 16px', borderBottom: '1px solid rgba(255,255,255,0.03)', cursor: 'pointer', transition: 'background 0.15s' },
-  productRowActive: { background: 'rgba(139,92,246,0.08)' },
+  listPanel: { background: '#fff', border: '1px solid #D8DCE9', borderRadius: 16, overflow: 'hidden', maxHeight: 560, overflowY: 'auto' },
+  empty: { padding: '40px', textAlign: 'center', color: '#8A90A8', fontSize: 13 },
+  productRow: { display: 'flex', alignItems: 'center', gap: 12, padding: '12px 16px', borderBottom: '1px solid #F6F7F4', cursor: 'pointer', transition: 'background 0.15s' },
+  productRowActive: { background: 'rgba(36,56,166,0.05)' },
   thumb: { width: 52, height: 40, objectFit: 'cover', borderRadius: 8, flexShrink: 0 },
   productInfo: { flex: 1, minWidth: 0 },
-  productTitle: { fontSize: 13, fontWeight: 600, color: '#e2e8f0', marginBottom: 3, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' },
-  productMeta: { display: 'flex', gap: 10, fontSize: 11, color: '#475569' },
+  productTitle: { fontSize: 13, fontWeight: 600, color: '#101B3E', marginBottom: 3, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' },
+  productMeta: { display: 'flex', gap: 10, fontSize: 11, color: '#5A6180' },
   quickActions: { display: 'flex', gap: 6, flexShrink: 0 },
-  quickApprove: { padding: '4px 10px', borderRadius: 6, fontSize: 11, fontWeight: 700, color: '#34d399', background: 'rgba(52,211,153,0.1)', border: '1px solid rgba(52,211,153,0.25)', cursor: 'pointer' },
-  quickReject:  { padding: '4px 10px', borderRadius: 6, fontSize: 11, fontWeight: 700, color: '#f87171', background: 'rgba(248,113,113,0.1)', border: '1px solid rgba(248,113,113,0.25)', cursor: 'pointer' },
-  detail: { background: 'rgba(255,255,255,0.02)', border: '1px solid rgba(139,92,246,0.1)', borderRadius: 16, padding: '20px', display: 'flex', flexDirection: 'column', gap: 14 },
-  detailEmpty: { background: 'rgba(255,255,255,0.02)', border: '1px solid rgba(139,92,246,0.08)', borderRadius: 16, padding: '60px 24px', textAlign: 'center', color: '#334155', fontSize: 13 },
-  emptyIcon: { fontSize: 32, marginBottom: 12, color: '#1e293b' },
+  quickApprove: { padding: '4px 10px', borderRadius: 6, fontSize: 11, fontWeight: 700, color: '#16a34a', background: 'rgba(22,163,74,0.08)', border: '1px solid rgba(22,163,74,0.25)', cursor: 'pointer' },
+  quickReject:  { padding: '4px 10px', borderRadius: 6, fontSize: 11, fontWeight: 700, color: '#E8542F', background: 'rgba(232,84,47,0.08)', border: '1px solid rgba(232,84,47,0.25)', cursor: 'pointer' },
+  detail: { background: '#fff', border: '1px solid #D8DCE9', borderRadius: 16, padding: '20px', display: 'flex', flexDirection: 'column', gap: 14 },
+  detailEmpty: { background: '#F6F7F4', border: '1px solid #D8DCE9', borderRadius: 16, padding: '60px 24px', textAlign: 'center', color: '#8A90A8', fontSize: 13 },
+  emptyIcon: { fontSize: 32, marginBottom: 12, color: '#D8DCE9' },
   detailImg: { width: '100%', height: 140, objectFit: 'cover', borderRadius: 10 },
-  detailTitle: { fontSize: 15, fontWeight: 700, color: '#e2e8f0' },
-  detailMeta: { display: 'flex', gap: 10, fontSize: 12, color: '#64748b', flexWrap: 'wrap' },
-  detailDesc: { fontSize: 12, color: '#64748b', lineHeight: 1.7 },
+  detailTitle: { fontSize: 15, fontWeight: 700, color: '#101B3E' },
+  detailMeta: { display: 'flex', gap: 10, fontSize: 12, color: '#5A6180', flexWrap: 'wrap' },
+  detailDesc: { fontSize: 12, color: '#5A6180', lineHeight: 1.7 },
   detailActions: { display: 'flex', flexDirection: 'column', gap: 8 },
-  approveBtn: { width: '100%', padding: '10px', borderRadius: 8, fontSize: 13, fontWeight: 700, color: '#34d399', background: 'rgba(52,211,153,0.1)', border: '1px solid rgba(52,211,153,0.3)', cursor: 'pointer' },
-  rejectBtn:  { width: '100%', padding: '10px', borderRadius: 8, fontSize: 13, fontWeight: 700, color: '#f87171', background: 'rgba(248,113,113,0.1)', border: '1px solid rgba(248,113,113,0.3)', cursor: 'pointer' },
-  overlay: { position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.7)', backdropFilter: 'blur(8px)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 400, padding: 20 },
-  modal: { background: '#0e0e20', border: '1px solid rgba(139,92,246,0.2)', borderRadius: 16, padding: '28px', width: '100%', maxWidth: 400 },
-  modalTitle: { fontSize: 16, fontWeight: 700, color: '#e2e8f0', marginBottom: 16 },
-  modalTextarea: { width: '100%', padding: '10px 12px', background: 'rgba(255,255,255,0.05)', border: '1px solid rgba(255,255,255,0.1)', borderRadius: 8, fontSize: 13, color: '#e2e8f0', outline: 'none', resize: 'none', boxSizing: 'border-box', marginBottom: 14 },
+  approveBtn: { width: '100%', padding: '10px', borderRadius: 8, fontSize: 13, fontWeight: 700, color: '#16a34a', background: 'rgba(22,163,74,0.08)', border: '1px solid rgba(22,163,74,0.25)', cursor: 'pointer' },
+  rejectBtn:  { width: '100%', padding: '10px', borderRadius: 8, fontSize: 13, fontWeight: 700, color: '#E8542F', background: 'rgba(232,84,47,0.08)', border: '1px solid rgba(232,84,47,0.25)', cursor: 'pointer' },
+  overlay: { position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.4)', backdropFilter: 'blur(4px)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 400, padding: 20 },
+  modal: { background: '#fff', border: '1px solid #D8DCE9', borderRadius: 16, padding: '28px', width: '100%', maxWidth: 400 },
+  modalTitle: { fontSize: 16, fontWeight: 700, color: '#101B3E', marginBottom: 16 },
+  modalTextarea: { width: '100%', padding: '10px 12px', background: '#F6F7F4', border: '1px solid #D8DCE9', borderRadius: 8, fontSize: 13, color: '#101B3E', outline: 'none', resize: 'none', boxSizing: 'border-box', marginBottom: 14 },
   modalActions: { display: 'flex', gap: 8 },
-  cancelBtn: { flex: 1, padding: '10px', borderRadius: 8, fontSize: 13, color: '#64748b', background: 'transparent', border: '1px solid rgba(255,255,255,0.08)', cursor: 'pointer' },
+  cancelBtn: { flex: 1, padding: '10px', borderRadius: 8, fontSize: 13, color: '#5A6180', background: 'transparent', border: '1px solid #D8DCE9', cursor: 'pointer' },
 }

@@ -2,9 +2,9 @@ import { useState, useEffect } from 'react'
 import { supabase } from '../../lib/supabase.js'
 
 const STATUS_STYLES = {
-  active:    { color: '#34d399', bg: 'rgba(52,211,153,0.1)',  border: 'rgba(52,211,153,0.2)',  label: 'アクティブ' },
-  suspended: { color: '#fb923c', bg: 'rgba(251,146,60,0.1)', border: 'rgba(251,146,60,0.2)', label: '停止中' },
-  banned:    { color: '#f87171', bg: 'rgba(248,113,113,0.1)', border: 'rgba(248,113,113,0.2)', label: 'BAN' },
+  active:    { color: '#16a34a', bg: 'rgba(22,163,74,0.08)',   border: 'rgba(22,163,74,0.22)',   label: 'アクティブ' },
+  suspended: { color: '#d97706', bg: 'rgba(217,119,6,0.08)',  border: 'rgba(217,119,6,0.22)',  label: '停止中' },
+  banned:    { color: '#E8542F', bg: 'rgba(232,84,47,0.08)',  border: 'rgba(232,84,47,0.22)',  label: 'BAN' },
 }
 
 export default function AdminUsers() {
@@ -74,7 +74,7 @@ export default function AdminUsers() {
         <div style={s.headerStats}>
           <span style={s.stat}>総数 <b>{users.length}</b></span>
           <span style={s.stat}>管理者 <b>{users.filter(u => u.role === 'admin').length}</b></span>
-          <span style={{ ...s.stat, color: '#f87171' }}>停止/BAN <b>{users.filter(u => u.status === 'suspended' || u.status === 'banned').length}</b></span>
+          <span style={{ ...s.stat, color: '#E8542F' }}>停止/BAN <b>{users.filter(u => u.status === 'suspended' || u.status === 'banned').length}</b></span>
         </div>
       </div>
 
@@ -112,7 +112,7 @@ export default function AdminUsers() {
                     <div style={s.userInfo}>
                       <div style={s.username}>@{u.username}</div>
                       <div style={s.userMeta}>
-                        <span style={{ ...s.rolePill, color: u.role === 'admin' ? '#a78bfa' : '#64748b', background: u.role === 'admin' ? 'rgba(167,139,250,0.1)' : 'rgba(255,255,255,0.04)' }}>
+                        <span style={{ ...s.rolePill, color: u.role === 'admin' ? '#2438A6' : '#5A6180', background: u.role === 'admin' ? 'rgba(36,56,166,0.08)' : 'rgba(90,97,128,0.07)' }}>
                           {u.role === 'admin' ? '管理者' : '一般'}
                         </span>
                       </div>
@@ -173,48 +173,48 @@ export default function AdminUsers() {
 
 const s = {
   container: { padding: '32px 36px', maxWidth: 1100, margin: '0 auto' },
-  toast: { position: 'fixed', top: 24, right: 24, zIndex: 999, padding: '12px 20px', borderRadius: 10, background: 'rgba(52,211,153,0.15)', border: '1px solid rgba(52,211,153,0.3)', color: '#34d399', fontSize: 13, fontWeight: 600 },
-  toastWarn: { background: 'rgba(251,146,60,0.15)', border: '1px solid rgba(251,146,60,0.3)', color: '#fb923c' },
-  toastError: { background: 'rgba(248,113,113,0.15)', border: '1px solid rgba(248,113,113,0.3)', color: '#f87171' },
+  toast: { position: 'fixed', top: 24, right: 24, zIndex: 999, padding: '12px 20px', borderRadius: 10, background: 'rgba(22,163,74,0.1)', border: '1px solid rgba(22,163,74,0.25)', color: '#16a34a', fontSize: 13, fontWeight: 600 },
+  toastWarn: { background: 'rgba(217,119,6,0.1)', border: '1px solid rgba(217,119,6,0.25)', color: '#d97706' },
+  toastError: { background: 'rgba(232,84,47,0.1)', border: '1px solid rgba(232,84,47,0.25)', color: '#E8542F' },
   pageHeader: { display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 28 },
-  pageTitle: { fontSize: 24, fontWeight: 800, color: '#e2e8f0' },
+  pageTitle: { fontSize: 24, fontWeight: 800, color: '#101B3E', fontFamily: "'Sora', sans-serif" },
   headerStats: { display: 'flex', gap: 16 },
-  stat: { fontSize: 13, color: '#475569' },
+  stat: { fontSize: 13, color: '#5A6180' },
   layout: { display: 'grid', gridTemplateColumns: '1fr 360px', gap: 20, alignItems: 'start' },
-  listPanel: { background: 'rgba(255,255,255,0.02)', border: '1px solid rgba(139,92,246,0.1)', borderRadius: 16, overflow: 'hidden' },
-  filters: { padding: '16px', borderBottom: '1px solid rgba(139,92,246,0.08)', display: 'flex', flexDirection: 'column', gap: 10 },
-  searchInput: { width: '100%', padding: '9px 12px', background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(255,255,255,0.08)', borderRadius: 8, fontSize: 13, color: '#e2e8f0', outline: 'none', boxSizing: 'border-box' },
+  listPanel: { background: '#fff', border: '1px solid #D8DCE9', borderRadius: 16, overflow: 'hidden' },
+  filters: { padding: '16px', borderBottom: '1px solid #F6F7F4', display: 'flex', flexDirection: 'column', gap: 10 },
+  searchInput: { width: '100%', padding: '9px 12px', background: '#F6F7F4', border: '1px solid #D8DCE9', borderRadius: 8, fontSize: 13, color: '#101B3E', outline: 'none', boxSizing: 'border-box' },
   filterRow: { display: 'flex', flexWrap: 'wrap', gap: 6, alignItems: 'center' },
-  filterBtn: { padding: '4px 10px', borderRadius: 6, fontSize: 11, fontWeight: 600, border: '1px solid rgba(255,255,255,0.08)', background: 'transparent', color: '#64748b', cursor: 'pointer' },
-  filterBtnActive: { background: 'rgba(139,92,246,0.15)', border: '1px solid rgba(139,92,246,0.3)', color: '#a78bfa' },
-  filterSep: { width: 1, height: 16, background: 'rgba(255,255,255,0.08)', margin: '0 2px' },
+  filterBtn: { padding: '4px 10px', borderRadius: 6, fontSize: 11, fontWeight: 600, border: '1px solid #D8DCE9', background: 'transparent', color: '#5A6180', cursor: 'pointer' },
+  filterBtnActive: { background: 'rgba(36,56,166,0.08)', border: '1px solid rgba(36,56,166,0.25)', color: '#2438A6' },
+  filterSep: { width: 1, height: 16, background: '#D8DCE9', margin: '0 2px' },
   list: { maxHeight: 520, overflowY: 'auto' },
-  emptyState: { padding: '40px', textAlign: 'center', color: '#334155', fontSize: 13 },
-  userRow: { display: 'flex', alignItems: 'center', gap: 12, padding: '12px 16px', borderBottom: '1px solid rgba(255,255,255,0.03)', cursor: 'pointer', transition: 'background 0.15s' },
-  userRowActive: { background: 'rgba(139,92,246,0.08)' },
-  avatar: { width: 36, height: 36, borderRadius: '50%', background: 'linear-gradient(135deg,#7c3aed,#0891b2)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 13, fontWeight: 700, color: '#fff', flexShrink: 0 },
+  emptyState: { padding: '40px', textAlign: 'center', color: '#8A90A8', fontSize: 13 },
+  userRow: { display: 'flex', alignItems: 'center', gap: 12, padding: '12px 16px', borderBottom: '1px solid #F6F7F4', cursor: 'pointer', transition: 'background 0.15s' },
+  userRowActive: { background: 'rgba(36,56,166,0.05)' },
+  avatar: { width: 36, height: 36, borderRadius: '50%', background: '#2438A6', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 13, fontWeight: 700, color: '#fff', flexShrink: 0 },
   userInfo: { flex: 1, minWidth: 0 },
-  username: { fontSize: 13, fontWeight: 600, color: '#e2e8f0' },
+  username: { fontSize: 13, fontWeight: 600, color: '#101B3E' },
   userMeta: { display: 'flex', gap: 6, marginTop: 2 },
   rolePill: { fontSize: 10, fontWeight: 600, padding: '1px 6px', borderRadius: 4 },
   statusPill: { fontSize: 10, fontWeight: 700, padding: '2px 8px', borderRadius: 20, border: '1px solid', flexShrink: 0 },
-  detail: { background: 'rgba(255,255,255,0.02)', border: '1px solid rgba(139,92,246,0.1)', borderRadius: 16, padding: '24px', display: 'flex', flexDirection: 'column', gap: 20 },
-  detailEmpty: { background: 'rgba(255,255,255,0.02)', border: '1px solid rgba(139,92,246,0.08)', borderRadius: 16, padding: '60px 24px', textAlign: 'center', color: '#334155', fontSize: 13 },
-  emptyIcon: { fontSize: 32, marginBottom: 12, color: '#1e293b' },
+  detail: { background: '#fff', border: '1px solid #D8DCE9', borderRadius: 16, padding: '24px', display: 'flex', flexDirection: 'column', gap: 20 },
+  detailEmpty: { background: '#F6F7F4', border: '1px solid #D8DCE9', borderRadius: 16, padding: '60px 24px', textAlign: 'center', color: '#8A90A8', fontSize: 13 },
+  emptyIcon: { fontSize: 32, marginBottom: 12, color: '#D8DCE9' },
   detailHeader: { display: 'flex', alignItems: 'center', gap: 14 },
-  detailAvatar: { width: 52, height: 52, borderRadius: '50%', background: 'linear-gradient(135deg,#7c3aed,#0891b2)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 20, fontWeight: 800, color: '#fff' },
-  detailName: { fontSize: 16, fontWeight: 700, color: '#e2e8f0', marginBottom: 6 },
-  detailBody: { display: 'flex', flexDirection: 'column', gap: 8, padding: '12px', background: 'rgba(255,255,255,0.02)', borderRadius: 10 },
+  detailAvatar: { width: 52, height: 52, borderRadius: '50%', background: '#2438A6', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 20, fontWeight: 800, color: '#fff' },
+  detailName: { fontSize: 16, fontWeight: 700, color: '#101B3E', marginBottom: 6 },
+  detailBody: { display: 'flex', flexDirection: 'column', gap: 8, padding: '12px', background: '#F6F7F4', borderRadius: 10 },
   detailRow: { display: 'flex', justifyContent: 'space-between', fontSize: 13 },
-  detailLabel: { color: '#475569' },
-  detailVal: { color: '#94a3b8', fontWeight: 600 },
+  detailLabel: { color: '#5A6180' },
+  detailVal: { color: '#5A6180', fontWeight: 600 },
   actionSection: { display: 'flex', flexDirection: 'column', gap: 8 },
-  actionTitle: { fontSize: 11, fontWeight: 700, color: '#475569', letterSpacing: '0.05em' },
+  actionTitle: { fontSize: 11, fontWeight: 700, color: '#5A6180', letterSpacing: '0.05em' },
   actionRow: { display: 'flex', gap: 8 },
   actionBtn: { flex: 1, padding: '8px', borderRadius: 8, fontSize: 12, fontWeight: 700, cursor: 'pointer', border: '1px solid', transition: 'opacity 0.15s' },
-  actionBtnGreen:  { color: '#34d399', background: 'rgba(52,211,153,0.08)',  borderColor: 'rgba(52,211,153,0.25)' },
-  actionBtnOrange: { color: '#fb923c', background: 'rgba(251,146,60,0.08)', borderColor: 'rgba(251,146,60,0.25)' },
-  actionBtnRed:    { color: '#f87171', background: 'rgba(248,113,113,0.08)', borderColor: 'rgba(248,113,113,0.25)' },
-  actionBtnGray:   { color: '#94a3b8', background: 'rgba(255,255,255,0.04)', borderColor: 'rgba(255,255,255,0.1)' },
-  actionBtnPurple: { color: '#a78bfa', background: 'rgba(167,139,250,0.08)', borderColor: 'rgba(167,139,250,0.25)' },
+  actionBtnGreen:  { color: '#16a34a', background: 'rgba(22,163,74,0.08)',  borderColor: 'rgba(22,163,74,0.25)' },
+  actionBtnOrange: { color: '#d97706', background: 'rgba(217,119,6,0.08)', borderColor: 'rgba(217,119,6,0.25)' },
+  actionBtnRed:    { color: '#E8542F', background: 'rgba(232,84,47,0.08)', borderColor: 'rgba(232,84,47,0.25)' },
+  actionBtnGray:   { color: '#5A6180', background: 'rgba(90,97,128,0.06)', borderColor: '#D8DCE9' },
+  actionBtnPurple: { color: '#2438A6', background: 'rgba(36,56,166,0.08)', borderColor: 'rgba(36,56,166,0.25)' },
 }
