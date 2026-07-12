@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { useParams, useNavigate } from 'react-router-dom'
 import { useProducts } from '../context/ProductContext.jsx'
 
@@ -9,6 +9,13 @@ export default function ProductDetailPage() {
   const product = products.find(p => p.id === id)
   const [currentImage, setCurrentImage] = useState(0)
   const [showPaymentModal, setShowPaymentModal] = useState(false)
+  const [isMobile, setIsMobile] = useState(window.innerWidth < 768)
+
+  useEffect(() => {
+    const onResize = () => setIsMobile(window.innerWidth < 768)
+    window.addEventListener('resize', onResize)
+    return () => window.removeEventListener('resize', onResize)
+  }, [])
 
   if (!product) {
     return (
@@ -25,7 +32,7 @@ export default function ProductDetailPage() {
         ← 一覧に戻る
       </button>
 
-      <div style={styles.layout}>
+      <div style={{ ...styles.layout, gridTemplateColumns: isMobile ? '1fr' : '1fr 1fr', gap: isMobile ? 24 : 48 }}>
         {/* Images */}
         <div style={styles.imageSection}>
           <div style={styles.mainImageWrapper}>

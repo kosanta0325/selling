@@ -438,7 +438,7 @@ const styles = {
   },
   grid: {
     display: 'grid',
-    gridTemplateColumns: 'repeat(auto-fill, minmax(300px, 1fr))',
+    gridTemplateColumns: 'repeat(auto-fill, minmax(280px, 1fr))',
     gap: 20,
   },
   card: {
@@ -862,7 +862,7 @@ const styles = {
     color: '#2438A6',
     fontWeight: 700,
   },
-  mPaymentGrid: { display: 'grid', gridTemplateColumns: 'repeat(3,1fr)', gap: 6 },
+  mPaymentGrid: { display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(130px, 1fr))', gap: 6 },
   mPayBtn: {
     display: 'flex',
     alignItems: 'center',

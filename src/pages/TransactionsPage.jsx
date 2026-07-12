@@ -82,6 +82,13 @@ export default function TransactionsPage() {
   const [loading, setLoading] = useState(true)
   const [tab, setTab] = useState('buyer')
   const [selected, setSelected] = useState(null)
+  const [isMobile, setIsMobile] = useState(window.innerWidth < 768)
+
+  useEffect(() => {
+    const onResize = () => setIsMobile(window.innerWidth < 768)
+    window.addEventListener('resize', onResize)
+    return () => window.removeEventListener('resize', onResize)
+  }, [])
 
   useEffect(() => {
     if (!user) return
@@ -155,8 +162,9 @@ export default function TransactionsPage() {
         </button>
       </div>
 
-      <div style={s.layout}>
-        {/* ── 取引一覧 ── */}
+      <div style={{ ...s.layout, gridTemplateColumns: isMobile ? '1fr' : '320px 1fr' }}>
+        {/* ── 取引一覧（モバイルでは詳細表示中は非表示） ── */}
+        {(!isMobile || !selected) && (
         <div style={s.listPanel}>
           {list.length === 0 ? (
             <div style={s.emptyList}>
@@ -188,21 +196,27 @@ export default function TransactionsPage() {
             })
           )}
         </div>
+        )}
 
         {/* ── 取引詳細 ── */}
         {selected ? (
-          <TransactionDetail
-            txn={selected}
-            role={tab === 'buyer' ? 'buyer' : 'seller'}
-            onUpdateTxn={updateTxn}
-            onAddMessage={addMessage}
-          />
-        ) : (
+          <div>
+            {isMobile && (
+              <button onClick={() => setSelected(null)} style={s.backBtn}>← 取引一覧に戻る</button>
+            )}
+            <TransactionDetail
+              txn={selected}
+              role={tab === 'buyer' ? 'buyer' : 'seller'}
+              onUpdateTxn={updateTxn}
+              onAddMessage={addMessage}
+            />
+          </div>
+        ) : !isMobile ? (
           <div style={s.detailEmpty}>
             <div style={s.detailEmptyIcon}>◈</div>
             <p>取引を選択してください</p>
           </div>
-        )}
+        ) : null}
       </div>
     </div>
   )
@@ -508,6 +522,7 @@ const s = {
 
   /* Layout */
   layout: { display: 'grid', gridTemplateColumns: '320px 1fr', gap: 16, alignItems: 'start' },
+  backBtn: { display: 'inline-flex', alignItems: 'center', gap: 6, marginBottom: 12, padding: '8px 14px', borderRadius: 8, fontSize: 13, fontWeight: 600, color: '#2438A6', background: 'rgba(36,56,166,0.06)', border: '1px solid rgba(36,56,166,0.2)', cursor: 'pointer' },
 
   /* List */
   listPanel: { backgroundColor: '#fff', borderRadius: 14, border: '1px solid #D8DCE9', overflow: 'hidden', maxHeight: 'calc(100vh - 240px)', overflowY: 'auto' },

@@ -29,6 +29,7 @@
 
 html {
   scroll-behavior: smooth;
+  overflow-x: hidden;
 }
 
 body {
@@ -37,10 +38,12 @@ body {
   color: var(--ink);
   line-height: 1.6;
   min-height: 100vh;
+  overflow-x: hidden;
 }
 
 #root {
   position: relative;
+  overflow-x: hidden;
 }
 
 a {
