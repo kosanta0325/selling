@@ -146,7 +146,7 @@ const styles = {
     background: '#fff',
   },
   heroTitle: {
-    fontSize: 48,
+    fontSize: 'clamp(28px, 10vw, 48px)',
     fontWeight: 800,
     color: '#101B3E',
     lineHeight: 1.2,

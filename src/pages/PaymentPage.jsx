@@ -38,13 +38,13 @@ function CheckoutForm({ product }) {
       const res = await fetch('/api/create-payment-intent', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ amount: product.price, currency: 'jpy' }),
+        body: JSON.stringify({ productId: product.id }),
       })
       if (!res.ok) {
         const errData = await res.json().catch(() => ({}))
         throw new Error(errData.error || 'サーバーエラーが発生しました')
       }
-      const { clientSecret } = await res.json()
+      const { clientSecret, amount: verifiedAmount } = await res.json()
 
       const { error: stripeError, paymentIntent } = await stripe.confirmCardPayment(clientSecret, {
         payment_method: {
@@ -64,9 +64,10 @@ function CheckoutForm({ product }) {
           await supabase.from('transactions').insert({
             seller_id: product.sellerId,
             buyer_id: user.id,
-            amount: product.price,
+            amount: verifiedAmount,
             product_title: product.title,
             product_image: product.images?.[0] || null,
+            product_id: product.id,
             status: 'pending',
             messages: [],
           })

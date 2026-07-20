@@ -543,7 +543,7 @@ const styles = {
   bankToast: { position: 'fixed', top: 24, right: 24, zIndex: 999, padding: '12px 20px', borderRadius: 10, background: 'rgba(36,56,166,0.08)', border: '1px solid rgba(36,56,166,0.25)', color: '#2438A6', fontSize: 13, fontWeight: 600 },
   bankToastError: { background: 'rgba(232,84,47,0.08)', border: '1px solid rgba(232,84,47,0.25)', color: '#E8542F' },
   bankCard: { background: '#fff', border: '1px solid #D8DCE9', borderRadius: 16, padding: '22px 24px', marginBottom: 32 },
-  bankCardHeader: { display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', marginBottom: 16 },
+  bankCardHeader: { display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', flexWrap: 'wrap', gap: 10, marginBottom: 16 },
   bankCardTitle: { display: 'flex', alignItems: 'flex-start', gap: 12 },
   bankIcon: { fontSize: 22, lineHeight: 1, marginTop: 2 },
   bankTitleText: { fontSize: 14, fontWeight: 700, color: '#101B3E', marginBottom: 3 },

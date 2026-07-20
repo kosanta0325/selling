@@ -516,7 +516,7 @@ const s = {
 
   /* Tabs */
   tabs: { display: 'flex', gap: 4, borderBottom: '1px solid #D8DCE9', marginBottom: 20, paddingBottom: 0 },
-  tab: { padding: '10px 22px', background: 'none', border: 'none', borderBottom: '2px solid transparent', color: '#5A6180', fontSize: 14, fontWeight: 600, cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 8, marginBottom: -1, transition: 'color 0.15s' },
+  tab: { padding: '10px 14px', background: 'none', border: 'none', borderBottom: '2px solid transparent', color: '#5A6180', fontSize: 14, fontWeight: 600, cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 6, marginBottom: -1, transition: 'color 0.15s', whiteSpace: 'nowrap' },
   tabActive: { color: '#2438A6', borderBottomColor: '#2438A6' },
   tabCount: { fontSize: 11, backgroundColor: 'rgba(36,56,166,0.08)', color: '#2438A6', padding: '2px 7px', borderRadius: 10, fontWeight: 700 },
 

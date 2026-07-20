@@ -411,6 +411,8 @@ const styles = {
     display: 'flex',
     alignItems: 'flex-start',
     justifyContent: 'space-between',
+    flexWrap: 'wrap',
+    gap: 12,
     marginBottom: 32,
   },
   pageTitle: {
