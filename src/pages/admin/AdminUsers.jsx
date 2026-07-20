@@ -34,8 +34,16 @@ export default function AdminUsers() {
   }
 
   async function updateStatus(id, status) {
-    const { error } = await supabase.from('profiles').update({ status }).eq('id', id)
-    if (error) { showToast('更新に失敗しました', 'error'); return }
+    const { data, error } = await supabase
+      .from('profiles')
+      .update({ status })
+      .eq('id', id)
+      .select('id, status')
+      .single()
+    if (error || !data || data.status !== status) {
+      showToast('更新に失敗しました（RLSポリシーまたはカラム不足の可能性）', 'error')
+      return
+    }
     setUsers(prev => prev.map(u => u.id === id ? { ...u, status } : u))
     setSelected(prev => prev?.id === id ? { ...prev, status } : prev)
     const labels = { active: 'アクティブに変更', suspended: '停止しました', banned: 'BANしました' }
@@ -45,8 +53,16 @@ export default function AdminUsers() {
   }
 
   async function updateRole(id, role) {
-    const { error } = await supabase.from('profiles').update({ role }).eq('id', id)
-    if (error) { showToast('更新に失敗しました', 'error'); return }
+    const { data, error } = await supabase
+      .from('profiles')
+      .update({ role })
+      .eq('id', id)
+      .select('id, role')
+      .single()
+    if (error || !data || data.role !== role) {
+      showToast('更新に失敗しました（RLSポリシーまたはカラム不足の可能性）', 'error')
+      return
+    }
     setUsers(prev => prev.map(u => u.id === id ? { ...u, role } : u))
     setSelected(prev => prev?.id === id ? { ...prev, role } : prev)
     showToast(`ロールを "${role}" に変更しました`)
