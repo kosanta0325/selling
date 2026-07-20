@@ -11,8 +11,12 @@ function DownloadButton({ r2Key, fileName }) {
     setLoading(true)
     setError('')
     try {
+      const { data: { session } } = await supabase.auth.getSession()
+      const token = session?.access_token
       const params = new URLSearchParams({ key: r2Key, fileName: fileName || '' })
-      const res = await fetch(`/api/download-file?${params}`)
+      const res = await fetch(`/api/download-file?${params}`, {
+        headers: token ? { Authorization: `Bearer ${token}` } : {},
+      })
       if (!res.ok) throw new Error('ダウンロードに失敗しました')
       const blob = await res.blob()
       const url = URL.createObjectURL(blob)
@@ -249,7 +253,13 @@ function TransactionDetail({ txn, role, onUpdateTxn, onAddMessage }) {
       formData.append('file', deliveryFile)
       formData.append('transactionId', txn.id)
 
-      const res = await fetch('/api/upload-file', { method: 'POST', body: formData })
+      const { data: { session } } = await supabase.auth.getSession()
+      const token = session?.access_token
+      const res = await fetch('/api/upload-file', {
+        method: 'POST',
+        body: formData,
+        headers: token ? { Authorization: `Bearer ${token}` } : {},
+      })
       if (!res.ok) throw new Error('アップロードに失敗しました')
       const { key, fileName } = await res.json()
 
