@@ -35,16 +35,22 @@ function CheckoutForm({ product }) {
     setError('')
 
     try {
+      const { data: { session } } = await supabase.auth.getSession()
+      const token = session?.access_token
+
       const res = await fetch('/api/create-payment-intent', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: {
+          'Content-Type': 'application/json',
+          ...(token ? { Authorization: `Bearer ${token}` } : {}),
+        },
         body: JSON.stringify({ productId: product.id }),
       })
       if (!res.ok) {
         const errData = await res.json().catch(() => ({}))
         throw new Error(errData.error || 'サーバーエラーが発生しました')
       }
-      const { clientSecret, amount: verifiedAmount } = await res.json()
+      const { clientSecret } = await res.json()
 
       const { error: stripeError, paymentIntent } = await stripe.confirmCardPayment(clientSecret, {
         payment_method: {
@@ -60,17 +66,18 @@ function CheckoutForm({ product }) {
       }
 
       if (paymentIntent.status === 'succeeded') {
-        if (user && product.sellerId) {
-          await supabase.from('transactions').insert({
-            seller_id: product.sellerId,
-            buyer_id: user.id,
-            amount: verifiedAmount,
-            product_title: product.title,
-            product_image: product.images?.[0] || null,
-            product_id: product.id,
-            status: 'pending',
-            messages: [],
-          })
+        // 取引登録はサーバー側で行う（ブラウザを閉じても Stripe 側の確認済み状態から復元できる）
+        const confirmRes = await fetch('/api/confirm-payment', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            ...(token ? { Authorization: `Bearer ${token}` } : {}),
+          },
+          body: JSON.stringify({ paymentIntentId: paymentIntent.id }),
+        })
+        if (!confirmRes.ok) {
+          const errData = await confirmRes.json().catch(() => ({}))
+          throw new Error(errData.error || '取引の登録に失敗しました。サポートにお問い合わせください。')
         }
         setSucceeded(true)
       }

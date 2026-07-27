@@ -10,6 +10,10 @@ const supabase = createClient(
   process.env.VITE_SUPABASE_URL,
   process.env.VITE_SUPABASE_ANON_KEY
 )
+const supabaseAdmin = createClient(
+  process.env.VITE_SUPABASE_URL,
+  process.env.SUPABASE_SERVICE_ROLE_KEY
+)
 
 const r2 = new S3Client({
   region: 'auto',
@@ -40,25 +44,89 @@ async function verifyUser(req, res) {
 /* ── Stripe ── */
 app.post('/api/create-payment-intent', async (req, res) => {
   try {
+    const user = await verifyUser(req, res)
+    if (!user) return
+
     const { productId } = req.body
     if (!productId) return res.status(400).json({ error: 'productId is required' })
 
     const { data: product, error: dbError } = await supabase
       .from('products')
-      .select('id, price, status')
+      .select('id, price, status, seller_id, title, images')
       .eq('id', productId)
       .single()
 
     if (dbError || !product) return res.status(404).json({ error: '商品が見つかりません' })
     if (product.status !== 'active') return res.status(400).json({ error: '現在購入できない商品です' })
+    if (!product.seller_id) return res.status(400).json({ error: '販売者情報がない商品は購入できません' })
+    if (product.seller_id === user.id) return res.status(400).json({ error: '自分の商品は購入できません' })
 
     const amount = product.price
     if (!amount || amount < 1) return res.status(400).json({ error: '無効な価格です' })
 
-    const paymentIntent = await stripe.paymentIntents.create({ amount, currency: 'jpy' })
+    const paymentIntent = await stripe.paymentIntents.create({
+      amount,
+      currency: 'jpy',
+      metadata: {
+        productId,
+        buyerId: user.id,
+        sellerId: product.seller_id,
+        productTitle: (product.title || '').slice(0, 500),
+        productImage: (product.images?.[0] || '').slice(0, 500),
+      },
+    })
     res.json({ clientSecret: paymentIntent.client_secret, amount })
   } catch (err) {
     console.error('Stripe error:', err.message)
+    res.status(500).json({ error: err.message })
+  }
+})
+
+app.post('/api/confirm-payment', async (req, res) => {
+  try {
+    const user = await verifyUser(req, res)
+    if (!user) return
+
+    const { paymentIntentId } = req.body
+    if (!paymentIntentId) return res.status(400).json({ error: 'paymentIntentId is required' })
+
+    const paymentIntent = await stripe.paymentIntents.retrieve(paymentIntentId)
+    if (paymentIntent.status !== 'succeeded') {
+      return res.status(400).json({ error: '決済が完了していません' })
+    }
+
+    const { productId, buyerId, sellerId, productTitle, productImage } = paymentIntent.metadata
+    if (buyerId !== user.id) return res.status(403).json({ error: 'アクセス権限がありません' })
+
+    const { data: existing } = await supabaseAdmin
+      .from('transactions')
+      .select('id')
+      .eq('payment_intent_id', paymentIntentId)
+      .maybeSingle()
+
+    if (existing) return res.json({ alreadyCreated: true, transactionId: existing.id })
+
+    const { data: txn, error: insertError } = await supabaseAdmin
+      .from('transactions')
+      .insert({
+        seller_id: sellerId,
+        buyer_id: buyerId,
+        amount: paymentIntent.amount,
+        product_id: productId,
+        product_title: productTitle || '',
+        product_image: productImage || null,
+        payment_intent_id: paymentIntentId,
+        status: 'pending',
+        messages: [],
+      })
+      .select()
+      .single()
+
+    if (insertError) return res.status(500).json({ error: insertError.message })
+
+    res.json({ transactionId: txn.id })
+  } catch (err) {
+    console.error('confirm-payment error:', err.message)
     res.status(500).json({ error: err.message })
   }
 })
