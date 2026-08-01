@@ -127,7 +127,13 @@ export default function AdminTransactions() {
 
           {/* 詳細 */}
           {selected ? (
-            <AdminTxnDetail txn={selected} />
+            <AdminTxnDetail
+              txn={selected}
+              onCancel={(id) => {
+                setTransactions(prev => prev.map(t => t.id === id ? { ...t, status: 'cancelled' } : t))
+                setSelected(prev => prev?.id === id ? { ...prev, status: 'cancelled' } : prev)
+              }}
+            />
           ) : (
             <div style={s.detailEmpty}>
               <div style={s.detailEmptyIcon}>◈</div>
@@ -140,10 +146,33 @@ export default function AdminTransactions() {
   )
 }
 
-function AdminTxnDetail({ txn }) {
+function AdminTxnDetail({ txn, onCancel }) {
   const st = STATUS_CONFIG[txn.status] || STATUS_CONFIG.pending
   const step = st.step
   const messages = Array.isArray(txn.messages) ? txn.messages : []
+  const [cancelModal, setCancelModal] = useState(false)
+  const [cancelReason, setCancelReason] = useState('')
+  const [cancelling, setCancelling] = useState(false)
+  const [toast, setToast] = useState(null)
+
+  const canCancel = !['cancelled', 'completed'].includes(txn.status)
+
+  async function handleCancel() {
+    setCancelling(true)
+    const { error } = await supabase
+      .from('transactions')
+      .update({ status: 'cancelled' })
+      .eq('id', txn.id)
+    setCancelling(false)
+    if (error) {
+      setToast({ msg: 'キャンセルに失敗しました', type: 'error' })
+      setTimeout(() => setToast(null), 3000)
+      return
+    }
+    setCancelModal(false)
+    setCancelReason('')
+    onCancel(txn.id)
+  }
 
   return (
     <div style={s.detail}>
@@ -242,6 +271,65 @@ function AdminTxnDetail({ txn }) {
         <div style={s.metaRow}><span style={s.metaLabel}>購入日時</span><span style={s.metaVal}>{formatDate(txn.created_at)}</span></div>
         {txn.payment_intent_id && <div style={s.metaRow}><span style={s.metaLabel}>Stripe ID</span><span style={s.metaVal}>{txn.payment_intent_id}</span></div>}
       </div>
+
+      {/* 管理者キャンセルボタン */}
+      {canCancel && (
+        <div style={s.cancelPanel}>
+          {toast && (
+            <div style={{ ...s.toast, ...(toast.type === 'error' ? s.toastError : {}) }}>
+              ⛔ {toast.msg}
+            </div>
+          )}
+          <button onClick={() => setCancelModal(true)} style={s.cancelBtn}>
+            ✕ 管理者権限でキャンセルする
+          </button>
+          <p style={s.cancelNote}>※ キャンセル後は元に戻せません。Stripeの返金は別途手動で行う必要があります。</p>
+        </div>
+      )}
+
+      {txn.status === 'cancelled' && (
+        <div style={s.cancelledBanner}>✕ この取引はキャンセル済みです</div>
+      )}
+
+      {/* キャンセル確認モーダル */}
+      {cancelModal && (
+        <div style={s.overlay} onClick={() => setCancelModal(false)}>
+          <div style={s.modal} onClick={e => e.stopPropagation()}>
+            <div style={s.modalIcon}>⚠</div>
+            <h3 style={s.modalTitle}>取引をキャンセルしますか？</h3>
+            <p style={s.modalDesc}>
+              <b>{txn.product_title}</b><br />
+              購入者：{txn.buyer?.username}　販売者：{txn.seller?.username}<br />
+              金額：¥{(txn.amount || 0).toLocaleString()}
+            </p>
+            <div style={{ marginBottom: 16 }}>
+              <label style={s.reasonLabel}>キャンセル理由（任意・記録用）</label>
+              <textarea
+                value={cancelReason}
+                onChange={e => setCancelReason(e.target.value)}
+                placeholder="例：規約違反のため、購入者からの申告により..."
+                rows={3}
+                style={s.reasonInput}
+              />
+            </div>
+            <p style={s.modalWarn}>
+              ⚠ Stripeへの返金は自動では行われません。必要な場合はStripeダッシュボードで別途処理してください。
+            </p>
+            <div style={s.modalActions}>
+              <button
+                onClick={handleCancel}
+                disabled={cancelling}
+                style={{ ...s.modalCancelBtn, opacity: cancelling ? 0.6 : 1 }}
+              >
+                {cancelling ? '処理中...' : 'キャンセルを実行する'}
+              </button>
+              <button onClick={() => setCancelModal(false)} style={s.modalBackBtn}>
+                戻る
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   )
 }
@@ -310,4 +398,21 @@ const s = {
   metaRow: { display: 'flex', gap: 12, fontSize: 11, alignItems: 'flex-start' },
   metaLabel: { color: '#8A90A8', width: 80, flexShrink: 0 },
   metaVal: { color: '#5A6180', wordBreak: 'break-all' },
+  cancelPanel: { padding: '16px 20px', borderTop: '1px solid #D8DCE9', display: 'flex', flexDirection: 'column', gap: 8 },
+  cancelBtn: { padding: '10px 18px', borderRadius: 9, fontSize: 13, fontWeight: 700, color: '#E8542F', background: 'rgba(232,84,47,0.06)', border: '1px solid rgba(232,84,47,0.3)', cursor: 'pointer', alignSelf: 'flex-start' },
+  cancelNote: { fontSize: 11, color: '#8A90A8', margin: 0 },
+  cancelledBanner: { padding: '12px 20px', background: 'rgba(248,113,113,0.08)', borderTop: '1px solid rgba(248,113,113,0.2)', fontSize: 13, fontWeight: 700, color: '#f87171', textAlign: 'center' },
+  toast: { position: 'fixed', top: 24, right: 24, zIndex: 999, padding: '12px 20px', borderRadius: 10, background: 'rgba(36,56,166,0.08)', border: '1px solid rgba(36,56,166,0.25)', color: '#2438A6', fontSize: 13, fontWeight: 600 },
+  toastError: { background: 'rgba(232,84,47,0.08)', border: '1px solid rgba(232,84,47,0.25)', color: '#E8542F' },
+  overlay: { position: 'fixed', inset: 0, background: 'rgba(16,27,62,0.4)', backdropFilter: 'blur(6px)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 500, padding: 20 },
+  modal: { background: '#fff', borderRadius: 18, padding: '32px 28px', maxWidth: 420, width: '100%', border: '1px solid #D8DCE9', boxShadow: '0 8px 40px rgba(16,27,62,0.15)' },
+  modalIcon: { fontSize: 36, textAlign: 'center', marginBottom: 12, color: '#E8542F' },
+  modalTitle: { fontSize: 18, fontWeight: 800, color: '#101B3E', textAlign: 'center', marginBottom: 12, fontFamily: "'Sora', sans-serif" },
+  modalDesc: { fontSize: 13, color: '#5A6180', lineHeight: 1.8, marginBottom: 16, padding: '12px 14px', background: '#F6F7F4', borderRadius: 10 },
+  reasonLabel: { fontSize: 12, fontWeight: 600, color: '#5A6180', display: 'block', marginBottom: 6 },
+  reasonInput: { width: '100%', padding: '10px 12px', borderRadius: 8, border: '1px solid #D8DCE9', fontSize: 13, color: '#101B3E', outline: 'none', resize: 'none', lineHeight: 1.6, boxSizing: 'border-box', fontFamily: 'inherit' },
+  modalWarn: { fontSize: 11, color: '#d97706', background: 'rgba(217,119,6,0.06)', border: '1px solid rgba(217,119,6,0.2)', borderRadius: 8, padding: '9px 12px', lineHeight: 1.6, marginBottom: 16 },
+  modalActions: { display: 'flex', gap: 10 },
+  modalCancelBtn: { flex: 1, padding: '12px', background: '#E8542F', color: '#fff', border: 'none', borderRadius: 10, fontSize: 14, fontWeight: 700, cursor: 'pointer' },
+  modalBackBtn: { padding: '12px 20px', background: '#F6F7F4', color: '#5A6180', border: '1px solid #D8DCE9', borderRadius: 10, fontSize: 14, cursor: 'pointer' },
 }
