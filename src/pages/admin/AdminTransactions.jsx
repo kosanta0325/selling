@@ -162,22 +162,26 @@ function AdminTxnDetail({ txn, onCancel }) {
     try {
       const { data: { session } } = await supabase.auth.getSession()
       const token = session?.access_token
+      if (!token) throw new Error('セッションが見つかりません。再ログインしてください。')
       const res = await fetch('/api/admin-cancel-transaction', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
-          ...(token ? { Authorization: `Bearer ${token}` } : {}),
+          Authorization: `Bearer ${token}`,
         },
         body: JSON.stringify({ transactionId: txn.id }),
       })
-      const json = await res.json()
-      if (!res.ok) throw new Error(json.error || 'キャンセルに失敗しました')
+      let json
+      try { json = await res.json() } catch { json = {} }
+      console.log('[cancel] status:', res.status, 'body:', json)
+      if (!res.ok) throw new Error(json.error || `サーバーエラー (${res.status})`)
       setCancelModal(false)
       setCancelReason('')
       onCancel(txn.id)
     } catch (err) {
+      console.error('[cancel] error:', err)
       setToast({ msg: err.message, type: 'error' })
-      setTimeout(() => setToast(null), 4000)
+      setTimeout(() => setToast(null), 6000)
     } finally {
       setCancelling(false)
     }
