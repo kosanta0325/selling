@@ -1,6 +1,5 @@
 import { createContext, useContext, useState, useEffect } from 'react'
 import { supabase } from '../lib/supabase'
-import { PRODUCTS } from '../data/index.js'
 
 const ProductContext = createContext(null)
 
@@ -42,10 +41,9 @@ export function ProductProvider({ children }) {
 
     if (error) {
       console.error('商品取得エラー:', error.message)
-      setProducts(PRODUCTS)
+      setProducts([])
     } else {
-      const dbProducts = (data ?? []).map(normalize)
-      setProducts([...dbProducts, ...PRODUCTS])
+      setProducts((data ?? []).map(normalize))
     }
     setLoading(false)
   }
