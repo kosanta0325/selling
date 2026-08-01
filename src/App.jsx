@@ -10,6 +10,7 @@ import AdminDashboard from './pages/admin/AdminDashboard.jsx'
 import AdminProducts from './pages/admin/AdminProducts.jsx'
 import AdminUsers from './pages/admin/AdminUsers.jsx'
 import PaymentPage from './pages/PaymentPage.jsx'
+import BankAccountPage from './pages/BankAccountPage.jsx'
 import LoginPage from './pages/LoginPage.jsx'
 import SignupPage from './pages/SignupPage.jsx'
 import { useAuth } from './context/AuthContext.jsx'
@@ -64,6 +65,7 @@ export default function App() {
                 <Route path="/my-products" element={<MyProductsPage />} />
                 <Route path="/transactions" element={<TransactionsPage />} />
                 <Route path="/payment" element={<PaymentPage />} />
+                <Route path="/bank" element={<BankAccountPage />} />
               </Routes>
             </main>
           </div>

@@ -6,6 +6,7 @@ const NAV_LINKS = [
   { to: '/', label: '商品一覧', icon: '🏪' },
   { to: '/my-products', label: 'マイ商品', icon: '📦' },
   { to: '/transactions', label: '取引管理', icon: '📋' },
+  { to: '/bank', label: '銀行口座管理', icon: '🏦' },
 ]
 
 export default function Header() {
