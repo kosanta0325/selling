@@ -10,6 +10,7 @@ import AdminDashboard from './pages/admin/AdminDashboard.jsx'
 import AdminProducts from './pages/admin/AdminProducts.jsx'
 import AdminUsers from './pages/admin/AdminUsers.jsx'
 import AdminPayouts from './pages/admin/AdminPayouts.jsx'
+import AdminTransactions from './pages/admin/AdminTransactions.jsx'
 import PaymentPage from './pages/PaymentPage.jsx'
 import BankAccountPage from './pages/BankAccountPage.jsx'
 import LoginPage from './pages/LoginPage.jsx'
@@ -52,6 +53,7 @@ export default function App() {
         <Route path="products" element={<AdminProducts />} />
         <Route path="users" element={<AdminUsers />} />
         <Route path="payouts" element={<AdminPayouts />} />
+        <Route path="transactions" element={<AdminTransactions />} />
       </Route>
 
       {/* 一般ユーザールート */}
