@@ -32,6 +32,15 @@ app.use(express.json())
 
 const upload = multer({ storage: multer.memoryStorage(), limits: { fileSize: 100 * 1024 * 1024 } })
 
+async function getFeeRate() {
+  const { data } = await supabaseAdmin
+    .from('platform_settings')
+    .select('value')
+    .eq('key', 'fee_rate')
+    .single()
+  return parseFloat(data?.value ?? '5')
+}
+
 /* ── JWT 検証ヘルパー ── */
 async function verifyUser(req, res) {
   const token = req.headers.authorization?.replace('Bearer ', '')
@@ -106,12 +115,20 @@ app.post('/api/confirm-payment', async (req, res) => {
 
     if (existing) return res.json({ alreadyCreated: true, transactionId: existing.id })
 
+    const feeRate = await getFeeRate()
+    const amount = paymentIntent.amount
+    const platformFee = Math.round(amount * feeRate / 100)
+    const sellerPayout = amount - platformFee
+
     const { data: txn, error: insertError } = await supabaseAdmin
       .from('transactions')
       .insert({
         seller_id: sellerId,
         buyer_id: buyerId,
-        amount: paymentIntent.amount,
+        amount,
+        platform_fee_rate: feeRate,
+        platform_fee: platformFee,
+        seller_payout: sellerPayout,
         product_id: productId,
         product_title: productTitle || '',
         product_image: productImage || null,

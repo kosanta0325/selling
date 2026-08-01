@@ -3,17 +3,24 @@ import { createClient } from '@supabase/supabase-js'
 
 const stripe = new Stripe(process.env.STRIPE_SECRET_KEY)
 
-// 書き込み用: service role key で RLS をバイパス
 const supabaseAdmin = createClient(
   process.env.VITE_SUPABASE_URL,
   process.env.SUPABASE_SERVICE_ROLE_KEY
 )
 
-// 認証検証用: anon key
 const supabaseAnon = createClient(
   process.env.VITE_SUPABASE_URL,
   process.env.VITE_SUPABASE_ANON_KEY
 )
+
+async function getFeeRate() {
+  const { data } = await supabaseAdmin
+    .from('platform_settings')
+    .select('value')
+    .eq('key', 'fee_rate')
+    .single()
+  return parseFloat(data?.value ?? '5')
+}
 
 export default async function handler(req, res) {
   if (req.method !== 'POST') return res.status(405).end()
@@ -52,12 +59,20 @@ export default async function handler(req, res) {
     if (existing) return res.json({ alreadyCreated: true, transactionId: existing.id })
 
     // サーバー側でトランザクションを登録（決済成功が確認済みの状態でのみ実行）
+    const feeRate = await getFeeRate()
+    const amount = paymentIntent.amount
+    const platformFee = Math.round(amount * feeRate / 100)
+    const sellerPayout = amount - platformFee
+
     const { data: txn, error: insertError } = await supabaseAdmin
       .from('transactions')
       .insert({
         seller_id: sellerId,
         buyer_id: buyerId,
-        amount: paymentIntent.amount,
+        amount,
+        platform_fee_rate: feeRate,
+        platform_fee: platformFee,
+        seller_payout: sellerPayout,
         product_id: productId,
         product_title: productTitle || '',
         product_image: productImage || null,
