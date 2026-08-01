@@ -5,6 +5,7 @@ const NAV = [
   { path: '/admin',          label: 'ダッシュボード', icon: '◈' },
   { path: '/admin/products', label: '商品審査',       icon: '◉' },
   { path: '/admin/users',    label: 'ユーザー管理',   icon: '◎' },
+  { path: '/admin/payouts',  label: '振込管理',       icon: '💴' },
 ]
 
 export default function AdminLayout() {
