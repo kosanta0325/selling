@@ -161,12 +161,16 @@ function AdminTxnDetail({ txn, onCancel }) {
   const [cancelReason, setCancelReason] = useState('')
   const [cancelling, setCancelling] = useState(false)
   const [toast, setToast] = useState(null)
+  const [cancelError, setCancelError] = useState(null)
+  const [stage, setStage] = useState(null)
 
   const canCancel = !['cancelled', 'completed'].includes(txn.status)
 
   async function handleCancel() {
     setCancelling(true)
+    setCancelError(null)
     try {
+      setStage('セッション取得中...')
       console.log('[cancel] 1/4 セッション取得中...')
       const { data: { session } } = await withTimeout(
         supabase.auth.getSession(),
@@ -176,6 +180,7 @@ function AdminTxnDetail({ txn, onCancel }) {
       const token = session?.access_token
       if (!token) throw new Error('セッションが見つかりません。再ログインしてください。')
 
+      setStage('API呼び出し中...')
       console.log('[cancel] 2/4 API呼び出し中... txnId =', txn.id)
       const controller = new AbortController()
       const timer = setTimeout(() => controller.abort(), 25000)
@@ -199,6 +204,7 @@ function AdminTxnDetail({ txn, onCancel }) {
         clearTimeout(timer)
       }
 
+      setStage(`応答受信 (${res.status})...`)
       console.log('[cancel] 3/4 レスポンス受信 status =', res.status)
       const raw = await res.text()
       let json = {}
@@ -214,10 +220,12 @@ function AdminTxnDetail({ txn, onCancel }) {
       onCancel(txn.id)
     } catch (err) {
       console.error('[cancel] error:', err)
+      setCancelError(err.message || String(err))
       setToast({ msg: err.message, type: 'error' })
       setTimeout(() => setToast(null), 8000)
     } finally {
       setCancelling(false)
+      setStage(null)
     }
   }
 
@@ -362,13 +370,21 @@ function AdminTxnDetail({ txn, onCancel }) {
             <p style={s.modalWarn}>
               ⚠ Stripeへの返金は自動では行われません。必要な場合はStripeダッシュボードで別途処理してください。
             </p>
+
+            {cancelError && (
+              <div style={s.modalError}>
+                <div style={s.modalErrorTitle}>⛔ キャンセルに失敗しました</div>
+                <div style={s.modalErrorMsg}>{cancelError}</div>
+              </div>
+            )}
+
             <div style={s.modalActions}>
               <button
                 onClick={handleCancel}
                 disabled={cancelling}
-                style={{ ...s.modalCancelBtn, opacity: cancelling ? 0.6 : 1 }}
+                style={{ ...s.modalCancelBtn, opacity: cancelling ? 0.6 : 1, cursor: cancelling ? 'wait' : 'pointer' }}
               >
-                {cancelling ? '処理中...' : 'キャンセルを実行する'}
+                {cancelling ? (stage || '処理中...') : 'キャンセルを実行する'}
               </button>
               <button onClick={() => setCancelModal(false)} style={s.modalBackBtn}>
                 戻る
@@ -459,6 +475,9 @@ const s = {
   reasonLabel: { fontSize: 12, fontWeight: 600, color: '#5A6180', display: 'block', marginBottom: 6 },
   reasonInput: { width: '100%', padding: '10px 12px', borderRadius: 8, border: '1px solid #D8DCE9', fontSize: 13, color: '#101B3E', outline: 'none', resize: 'none', lineHeight: 1.6, boxSizing: 'border-box', fontFamily: 'inherit' },
   modalWarn: { fontSize: 11, color: '#d97706', background: 'rgba(217,119,6,0.06)', border: '1px solid rgba(217,119,6,0.2)', borderRadius: 8, padding: '9px 12px', lineHeight: 1.6, marginBottom: 16 },
+  modalError: { background: 'rgba(232,84,47,0.07)', border: '1px solid rgba(232,84,47,0.3)', borderRadius: 10, padding: '12px 14px', marginBottom: 16 },
+  modalErrorTitle: { fontSize: 12, fontWeight: 700, color: '#E8542F', marginBottom: 6 },
+  modalErrorMsg: { fontSize: 12, color: '#101B3E', lineHeight: 1.7, wordBreak: 'break-word', fontFamily: 'ui-monospace, monospace' },
   modalActions: { display: 'flex', gap: 10 },
   modalCancelBtn: { flex: 1, padding: '12px', background: '#E8542F', color: '#fff', border: 'none', borderRadius: 10, fontSize: 14, fontWeight: 700, cursor: 'pointer' },
   modalBackBtn: { padding: '12px 20px', background: '#F6F7F4', color: '#5A6180', border: '1px solid #D8DCE9', borderRadius: 10, fontSize: 14, cursor: 'pointer' },
