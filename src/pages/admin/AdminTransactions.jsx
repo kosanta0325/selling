@@ -2,6 +2,13 @@ import { useState, useEffect } from 'react'
 import { supabase } from '../../lib/supabase.js'
 import { STATUS_CONFIG, TIMELINE_STEPS } from '../../data/index.js'
 
+function withTimeout(promise, ms, message) {
+  return Promise.race([
+    promise,
+    new Promise((_, reject) => setTimeout(() => reject(new Error(message)), ms)),
+  ])
+}
+
 function formatDate(iso) {
   if (!iso) return '—'
   const d = new Date(iso)
@@ -160,28 +167,55 @@ function AdminTxnDetail({ txn, onCancel }) {
   async function handleCancel() {
     setCancelling(true)
     try {
-      const { data: { session } } = await supabase.auth.getSession()
+      console.log('[cancel] 1/4 セッション取得中...')
+      const { data: { session } } = await withTimeout(
+        supabase.auth.getSession(),
+        8000,
+        'セッション取得がタイムアウトしました。ページを再読み込みしてください。'
+      )
       const token = session?.access_token
       if (!token) throw new Error('セッションが見つかりません。再ログインしてください。')
-      const res = await fetch('/api/admin-cancel-transaction', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          Authorization: `Bearer ${token}`,
-        },
-        body: JSON.stringify({ transactionId: txn.id }),
-      })
-      let json
-      try { json = await res.json() } catch { json = {} }
-      console.log('[cancel] status:', res.status, 'body:', json)
-      if (!res.ok) throw new Error(json.error || `サーバーエラー (${res.status})`)
+
+      console.log('[cancel] 2/4 API呼び出し中... txnId =', txn.id)
+      const controller = new AbortController()
+      const timer = setTimeout(() => controller.abort(), 25000)
+      let res
+      try {
+        res = await fetch('/api/admin-cancel-transaction', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            Authorization: `Bearer ${token}`,
+          },
+          body: JSON.stringify({ transactionId: txn.id }),
+          signal: controller.signal,
+        })
+      } catch (e) {
+        if (e.name === 'AbortError') {
+          throw new Error('APIが25秒応答しませんでした。サーバー側の処理が停止しています。')
+        }
+        throw new Error(`API接続に失敗しました: ${e.message}`)
+      } finally {
+        clearTimeout(timer)
+      }
+
+      console.log('[cancel] 3/4 レスポンス受信 status =', res.status)
+      const raw = await res.text()
+      let json = {}
+      try { json = raw ? JSON.parse(raw) : {} } catch { /* JSON以外 */ }
+      console.log('[cancel] 4/4 body =', raw.slice(0, 500))
+
+      if (!res.ok) {
+        throw new Error(json.error || `サーバーエラー (${res.status})${raw ? `: ${raw.slice(0, 200)}` : '（応答が空）'}`)
+      }
+
       setCancelModal(false)
       setCancelReason('')
       onCancel(txn.id)
     } catch (err) {
       console.error('[cancel] error:', err)
       setToast({ msg: err.message, type: 'error' })
-      setTimeout(() => setToast(null), 6000)
+      setTimeout(() => setToast(null), 8000)
     } finally {
       setCancelling(false)
     }

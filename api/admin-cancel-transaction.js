@@ -34,7 +34,11 @@ export default async function handler(req, res) {
     if (profileError) return res.status(500).json({ error: `プロフィール取得失敗: ${profileError.message}` })
     if (profile?.role !== 'admin') return res.status(403).json({ error: '管理者権限が必要です' })
 
-    const { transactionId } = req.body || {}
+    let body = req.body
+    if (typeof body === 'string') {
+      try { body = JSON.parse(body) } catch { body = {} }
+    }
+    const { transactionId } = body || {}
     if (!transactionId) return res.status(400).json({ error: 'transactionId is required' })
 
     const { data: txn, error: txnError } = await supabaseAdmin
