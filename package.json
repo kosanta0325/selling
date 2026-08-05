@@ -24,6 +24,7 @@
   "scripts": {
     "dev": "vite",
     "server": "node --env-file=.env server.js",
+    "r2:cors": "node --env-file=.env scripts/set-r2-cors.js",
     "build": "vite build",
     "preview": "vite preview"
   }
