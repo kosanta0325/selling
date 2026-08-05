@@ -3,6 +3,26 @@ import { STATUS_CONFIG, TIMELINE_STEPS } from '../data/index.js'
 import { useAuth } from '../context/AuthContext.jsx'
 import { supabase } from '../lib/supabase.js'
 
+export const MAX_UPLOAD_BYTES = 100 * 1024 * 1024 // 100MB
+
+/** 署名付きURLへ直接 PUT する。進捗を取りたいので fetch ではなく XHR を使う。 */
+function putToR2(uploadUrl, file, contentType, onProgress) {
+  return new Promise((resolve, reject) => {
+    const xhr = new XMLHttpRequest()
+    xhr.open('PUT', uploadUrl)
+    xhr.setRequestHeader('Content-Type', contentType)
+    xhr.upload.onprogress = e => {
+      if (e.lengthComputable) onProgress(Math.round((e.loaded / e.total) * 100))
+    }
+    xhr.onload = () => {
+      if (xhr.status >= 200 && xhr.status < 300) resolve()
+      else reject(new Error(`R2へのアップロードに失敗しました (${xhr.status})。R2のCORS設定を確認してください。`))
+    }
+    xhr.onerror = () => reject(new Error('R2へ接続できませんでした。R2のCORS設定を確認してください。'))
+    xhr.send(file)
+  })
+}
+
 function DownloadButton({ r2Key, fileName }) {
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState('')
@@ -13,20 +33,22 @@ function DownloadButton({ r2Key, fileName }) {
     try {
       const { data: { session } } = await supabase.auth.getSession()
       const token = session?.access_token
+      if (!token) throw new Error('セッションが見つかりません。再ログインしてください。')
+
       const params = new URLSearchParams({ key: r2Key, fileName: fileName || '' })
-      const res = await fetch(`/api/download-file?${params}`, {
-        headers: token ? { Authorization: `Bearer ${token}` } : {},
+      const res = await fetch(`/api/download-url?${params}`, {
+        headers: { Authorization: `Bearer ${token}` },
       })
-      if (!res.ok) throw new Error('ダウンロードに失敗しました')
-      const blob = await res.blob()
-      const url = URL.createObjectURL(blob)
+      const json = await res.json().catch(() => ({}))
+      if (!res.ok) throw new Error(json.error || 'ダウンロードに失敗しました')
+
+      // R2 から直接ダウンロードさせる（サーバーを経由しないのでサイズ制限がない）
       const a = document.createElement('a')
-      a.href = url
-      a.download = fileName || 'file'
+      a.href = json.url
+      a.download = json.fileName || fileName || 'file'
       document.body.appendChild(a)
       a.click()
       document.body.removeChild(a)
-      URL.revokeObjectURL(url)
     } catch (err) {
       setError(err.message)
     } finally {
@@ -42,7 +64,7 @@ function DownloadButton({ r2Key, fileName }) {
         background: 'rgba(36,56,166,0.06)', color: '#2438A6',
         fontSize: 13, fontWeight: 600, cursor: 'pointer', opacity: loading ? 0.6 : 1,
       }}>
-        ⬇ {loading ? 'URLを取得中...' : (fileName || 'ファイルをダウンロード')}
+        ⬇ {loading ? '準備中...' : (fileName || 'ファイルをダウンロード')}
       </button>
       {error && <p style={{ fontSize: 11, color: '#E8542F', marginTop: 4 }}>{error}</p>}
     </div>
@@ -129,6 +151,17 @@ export default function TransactionsPage() {
     }
   }
 
+  // 納品完了はサーバー側で確定済みなので、ここでは画面状態を合わせるだけ
+  const markDelivered = (id, msg) => {
+    const apply = t => ({
+      ...t,
+      status: 'delivered',
+      messages: msg ? [...(t.messages || []), msg] : t.messages,
+    })
+    setTransactions(prev => prev.map(t => t.id === id ? apply(t) : t))
+    setSelected(prev => prev?.id === id ? apply(prev) : prev)
+  }
+
   const addMessage = async (id, msg) => {
     const currentTxn = transactions.find(t => t.id === id)
     const updatedMessages = [...(currentTxn?.messages || []), msg]
@@ -213,6 +246,7 @@ export default function TransactionsPage() {
               role={tab === 'buyer' ? 'buyer' : 'seller'}
               onUpdateTxn={updateTxn}
               onAddMessage={addMessage}
+              onDelivered={markDelivered}
             />
           </div>
         ) : !isMobile ? (
@@ -229,7 +263,7 @@ export default function TransactionsPage() {
 /* ══════════════════════════════
    取引詳細コンポーネント
 ══════════════════════════════ */
-function TransactionDetail({ txn, role, onUpdateTxn, onAddMessage }) {
+function TransactionDetail({ txn, role, onUpdateTxn, onAddMessage, onDelivered }) {
   const st = STATUS_CONFIG[txn.status]
   const step = st.step
 
@@ -238,43 +272,58 @@ function TransactionDetail({ txn, role, onUpdateTxn, onAddMessage }) {
   const [deliveryNote, setDeliveryNote] = useState('')
   const [showDeliveryForm, setShowDeliveryForm] = useState(false)
   const [uploading, setUploading] = useState(false)
+  const [uploadPct, setUploadPct] = useState(0)
   const [uploadError, setUploadError] = useState('')
   const [confirmModal, setConfirmModal] = useState(false)
 
   const now = new Date().toLocaleString('ja-JP', { year: 'numeric', month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit' }).replace(/\//g, '-')
 
-  // 出品者：ファイルアップロードして納品
+  // 出品者：R2 へ直接アップロードして納品
   const handleDeliver = async () => {
     if (!deliveryFile) return
+    if (deliveryFile.size > MAX_UPLOAD_BYTES) {
+      setUploadError(`ファイルが大きすぎます（最大${MAX_UPLOAD_BYTES / 1024 / 1024}MB）`)
+      return
+    }
     setUploading(true)
     setUploadError('')
+    setUploadPct(0)
     try {
-      const formData = new FormData()
-      formData.append('file', deliveryFile)
-      formData.append('transactionId', txn.id)
-
       const { data: { session } } = await supabase.auth.getSession()
       const token = session?.access_token
-      const res = await fetch('/api/upload-file', {
-        method: 'POST',
-        body: formData,
-        headers: token ? { Authorization: `Bearer ${token}` } : {},
-      })
-      if (!res.ok) throw new Error('アップロードに失敗しました')
-      const { key, fileName } = await res.json()
+      if (!token) throw new Error('セッションが見つかりません。再ログインしてください。')
 
-      const msg = {
-        id: `m-${Date.now()}`,
-        from: 'seller',
-        type: 'delivery',
-        content: '納品が完了しました。ファイルをダウンロードしてください。',
-        r2Key: key,
-        fileName,
-        deliveryNote: deliveryNote.trim(),
-        sentAt: now,
-      }
-      onAddMessage(txn.id, msg)
-      onUpdateTxn(txn.id, { status: 'delivered', deliveredAt: now, r2Key: key, fileName })
+      // 1. 署名付きアップロードURLを取得
+      const urlRes = await fetch('/api/upload-url', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+        body: JSON.stringify({
+          transactionId: txn.id,
+          fileName: deliveryFile.name,
+          contentType: deliveryFile.type || 'application/octet-stream',
+          size: deliveryFile.size,
+        }),
+      })
+      const urlJson = await urlRes.json().catch(() => ({}))
+      if (!urlRes.ok) throw new Error(urlJson.error || 'アップロードURLの取得に失敗しました')
+
+      // 2. R2 へ直接 PUT（サーバーを経由しないのでサイズ制限を受けない）
+      await putToR2(urlJson.uploadUrl, deliveryFile, urlJson.contentType, setUploadPct)
+
+      // 3. 納品として登録（メッセージとステータスはサーバー側で確定）
+      const attachRes = await fetch('/api/attach-file', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+        body: JSON.stringify({
+          key: urlJson.key,
+          fileName: deliveryFile.name,
+          note: deliveryNote.trim(),
+        }),
+      })
+      const attachJson = await attachRes.json().catch(() => ({}))
+      if (!attachRes.ok) throw new Error(attachJson.error || '納品の登録に失敗しました')
+
+      onDelivered(txn.id, attachJson.message)
       setDeliveryFile(null)
       setDeliveryNote('')
       setShowDeliveryForm(false)
@@ -282,6 +331,7 @@ function TransactionDetail({ txn, role, onUpdateTxn, onAddMessage }) {
       setUploadError(err.message)
     } finally {
       setUploading(false)
+      setUploadPct(0)
     }
   }
 
@@ -420,7 +470,11 @@ function TransactionDetail({ txn, role, onUpdateTxn, onAddMessage }) {
                       <>
                         <span style={{ fontSize: 20 }}>📄</span>
                         <span style={{ fontSize: 13, color: '#2438A6', fontWeight: 600 }}>{deliveryFile.name}</span>
-                        <span style={{ fontSize: 11, color: '#8A90A8' }}>{(deliveryFile.size / 1024).toFixed(0)} KB</span>
+                        <span style={{ fontSize: 11, color: '#8A90A8' }}>
+                          {deliveryFile.size >= 1024 * 1024
+                            ? `${(deliveryFile.size / 1024 / 1024).toFixed(1)} MB`
+                            : `${(deliveryFile.size / 1024).toFixed(0)} KB`}
+                        </span>
                       </>
                     ) : (
                       <>
@@ -438,6 +492,16 @@ function TransactionDetail({ txn, role, onUpdateTxn, onAddMessage }) {
                   rows={3}
                   style={s.deliveryTextarea}
                 />
+                {uploading && (
+                  <div>
+                    <div style={s.progressTrack}>
+                      <div style={{ ...s.progressBar, width: `${uploadPct}%` }} />
+                    </div>
+                    <p style={{ fontSize: 11, color: '#5A6180', marginTop: 4 }}>
+                      {uploadPct < 100 ? `アップロード中... ${uploadPct}%` : '納品を登録中...'}
+                    </p>
+                  </div>
+                )}
                 {uploadError && <p style={{ fontSize: 12, color: '#E8542F' }}>{uploadError}</p>}
                 <div style={{ display: 'flex', gap: 8 }}>
                   <button
@@ -445,7 +509,7 @@ function TransactionDetail({ txn, role, onUpdateTxn, onAddMessage }) {
                     disabled={!deliveryFile || uploading}
                     style={{ ...s.deliverBtn, flex: 1, opacity: (deliveryFile && !uploading) ? 1 : 0.4 }}
                   >
-                    {uploading ? 'アップロード中...' : '納品を完了する'}
+                    {uploading ? `アップロード中... ${uploadPct}%` : '納品を完了する'}
                   </button>
                   <button onClick={() => { setShowDeliveryForm(false); setDeliveryFile(null); setUploadError('') }} style={s.cancelSmallBtn}>
                     キャンセル
@@ -611,6 +675,8 @@ const s = {
   fileLabel: { cursor: 'pointer', display: 'block' },
   fileDropZone: { display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 6, padding: '18px 12px', borderRadius: 10, border: '1.5px dashed #D8DCE9', backgroundColor: '#F6F7F4', transition: 'border-color 0.2s' },
   deliveryTextarea: { padding: '10px 12px', borderRadius: 8, border: '1px solid #D8DCE9', backgroundColor: '#F6F7F4', color: '#101B3E', fontSize: 13, outline: 'none', resize: 'none', lineHeight: 1.6 },
+  progressTrack: { height: 6, borderRadius: 3, background: '#D8DCE9', overflow: 'hidden' },
+  progressBar: { height: '100%', background: '#2438A6', transition: 'width 0.2s' },
   cancelSmallBtn: { padding: '10px 16px', backgroundColor: '#fff', color: '#5A6180', border: '1px solid #D8DCE9', borderRadius: 8, fontSize: 13, cursor: 'pointer' },
   msgInput: { display: 'flex', gap: 8 },
   msgInputField: { flex: 1, padding: '10px 12px', borderRadius: 8, border: '1px solid #D8DCE9', backgroundColor: '#fff', color: '#101B3E', fontSize: 13, outline: 'none' },

@@ -2,8 +2,12 @@ import express from 'express'
 import cors from 'cors'
 import multer from 'multer'
 import Stripe from 'stripe'
-import { S3Client, PutObjectCommand, GetObjectCommand } from '@aws-sdk/client-s3'
+import { S3Client, PutObjectCommand, GetObjectCommand, HeadObjectCommand, DeleteObjectCommand } from '@aws-sdk/client-s3'
+import { getSignedUrl } from '@aws-sdk/s3-request-presigner'
 import { createClient } from '@supabase/supabase-js'
+import { parseKey, safeFileName } from './api/_r2.js'
+
+const MAX_UPLOAD_BYTES = 100 * 1024 * 1024
 
 const stripe = new Stripe(process.env.STRIPE_SECRET_KEY)
 const supabase = createClient(
@@ -223,6 +227,146 @@ app.get('/api/download-file', async (req, res) => {
     obj.Body.pipe(res)
   } catch (err) {
     console.error('R2 download error:', err.message)
+    res.status(500).json({ error: err.message })
+  }
+})
+
+/* ── R2 直接アップロード：署名付き PUT URL を発行 ── */
+app.post('/api/upload-url', async (req, res) => {
+  try {
+    const user = await verifyUser(req, res)
+    if (!user) return
+
+    const { transactionId, fileName, contentType, size } = req.body || {}
+    if (!transactionId) return res.status(400).json({ error: 'transactionId is required' })
+    if (!fileName) return res.status(400).json({ error: 'fileName is required' })
+    if (typeof size !== 'number' || size <= 0) return res.status(400).json({ error: 'ファイルサイズが不正です' })
+    if (size > MAX_UPLOAD_BYTES) {
+      return res.status(400).json({ error: `ファイルが大きすぎます（最大${MAX_UPLOAD_BYTES / 1024 / 1024}MB）` })
+    }
+
+    const { data: txn, error: txnError } = await supabase
+      .from('transactions')
+      .select('seller_id, status')
+      .eq('id', transactionId)
+      .single()
+
+    if (txnError || !txn) return res.status(404).json({ error: '取引が見つかりません' })
+    if (txn.seller_id !== user.id) return res.status(403).json({ error: 'アクセス権限がありません' })
+    if (txn.status === 'cancelled') return res.status(400).json({ error: 'キャンセル済みの取引には納品できません' })
+
+    const key = `transactions/${transactionId}/${Date.now()}_${safeFileName(fileName)}`
+    const type = contentType || 'application/octet-stream'
+
+    const uploadUrl = await getSignedUrl(
+      r2,
+      new PutObjectCommand({ Bucket: BUCKET, Key: key, ContentType: type }),
+      { expiresIn: 600 }
+    )
+
+    res.json({ uploadUrl, key, contentType: type })
+  } catch (err) {
+    res.status(500).json({ error: err.message })
+  }
+})
+
+/* ── R2 直接アップロード：納品として登録 ── */
+app.post('/api/attach-file', async (req, res) => {
+  try {
+    const user = await verifyUser(req, res)
+    if (!user) return
+
+    const { key, fileName, note } = req.body || {}
+    const transactionId = parseKey(key)
+    if (!transactionId) return res.status(400).json({ error: '無効なキーです' })
+
+    const { data: txn, error: txnError } = await supabaseAdmin
+      .from('transactions')
+      .select('seller_id, status, messages')
+      .eq('id', transactionId)
+      .single()
+
+    if (txnError || !txn) return res.status(404).json({ error: '取引が見つかりません' })
+    if (txn.seller_id !== user.id) return res.status(403).json({ error: 'アクセス権限がありません' })
+    if (txn.status === 'cancelled') return res.status(400).json({ error: 'キャンセル済みの取引には納品できません' })
+
+    let head
+    try {
+      head = await r2.send(new HeadObjectCommand({ Bucket: BUCKET, Key: key }))
+    } catch {
+      return res.status(400).json({ error: 'ファイルがアップロードされていません' })
+    }
+    if (head.ContentLength > MAX_UPLOAD_BYTES) {
+      await r2.send(new DeleteObjectCommand({ Bucket: BUCKET, Key: key })).catch(() => {})
+      return res.status(400).json({ error: `ファイルが大きすぎます（最大${MAX_UPLOAD_BYTES / 1024 / 1024}MB）` })
+    }
+
+    const d = new Date()
+    const p = n => String(n).padStart(2, '0')
+    const messages = Array.isArray(txn.messages) ? txn.messages : []
+    const msg = {
+      id: `m-${Date.now()}`,
+      from: 'seller',
+      type: 'delivery',
+      content: '納品が完了しました。ファイルをダウンロードしてください。',
+      r2Key: key,
+      fileName: fileName || key.split('/').pop(),
+      deliveryNote: typeof note === 'string' ? note.trim().slice(0, 2000) : '',
+      sentAt: `${d.getFullYear()}-${p(d.getMonth() + 1)}-${p(d.getDate())} ${p(d.getHours())}:${p(d.getMinutes())}`,
+    }
+
+    const { error: updateError } = await supabaseAdmin
+      .from('transactions')
+      .update({ messages: [...messages, msg], r2_key: key, file_name: msg.fileName, status: 'delivered' })
+      .eq('id', transactionId)
+
+    if (updateError) return res.status(500).json({ error: `更新失敗: ${updateError.message}` })
+
+    res.json({ ok: true, message: msg })
+  } catch (err) {
+    res.status(500).json({ error: err.message })
+  }
+})
+
+/* ── R2 直接ダウンロード：署名付き GET URL を発行 ── */
+app.get('/api/download-url', async (req, res) => {
+  try {
+    const user = await verifyUser(req, res)
+    if (!user) return
+
+    const { key, fileName } = req.query
+    const transactionId = parseKey(key)
+    if (!transactionId) return res.status(400).json({ error: '無効なキーです' })
+
+    const { data: txn, error: txnError } = await supabase
+      .from('transactions')
+      .select('buyer_id, seller_id, status')
+      .eq('id', transactionId)
+      .single()
+
+    if (txnError || !txn) return res.status(404).json({ error: '取引が見つかりません' })
+
+    const isBuyer = txn.buyer_id === user.id
+    const isSeller = txn.seller_id === user.id
+    if (!isBuyer && !isSeller) return res.status(403).json({ error: 'アクセス権限がありません' })
+    if (txn.status === 'cancelled' && !isSeller) {
+      return res.status(403).json({ error: 'キャンセル済みの取引のためダウンロードできません' })
+    }
+
+    const name = fileName || key.split('/').pop()
+    const url = await getSignedUrl(
+      r2,
+      new GetObjectCommand({
+        Bucket: BUCKET,
+        Key: key,
+        ResponseContentDisposition: `attachment; filename*=UTF-8''${encodeURIComponent(name)}`,
+        ResponseContentType: 'application/octet-stream',
+      }),
+      { expiresIn: 300 }
+    )
+
+    res.json({ url, fileName: name })
+  } catch (err) {
     res.status(500).json({ error: err.message })
   }
 })
