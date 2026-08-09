@@ -1,7 +1,8 @@
 import { GetObjectCommand } from '@aws-sdk/client-s3'
 import { getSignedUrl } from '@aws-sdk/s3-request-presigner'
 import {
-  BUCKET, missingEnv, makeR2, makeSupabase, getUserFromRequest, parseKey,
+  BUCKET, missingEnv, makeR2, makeSupabase, makeSupabaseAdmin,
+  getUserFromRequest, parseKey,
 } from './_r2.js'
 
 const REQUIRED = [
@@ -11,6 +12,7 @@ const REQUIRED = [
   'CLOUDFLARE_R2_BUCKET_NAME',
   'VITE_SUPABASE_URL',
   'VITE_SUPABASE_ANON_KEY',
+  'SUPABASE_SERVICE_ROLE_KEY',
 ]
 
 export default async function handler(req, res) {
@@ -30,7 +32,8 @@ export default async function handler(req, res) {
     const transactionId = parseKey(key)
     if (!transactionId) return res.status(400).json({ error: '無効なキーです' })
 
-    const { data: txn, error: txnError } = await supabase
+    // RLS で anon からは読めないため、JWT 検証済みの上で service role を使う
+    const { data: txn, error: txnError } = await makeSupabaseAdmin()
       .from('transactions')
       .select('buyer_id, seller_id, status')
       .eq('id', transactionId)

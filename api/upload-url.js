@@ -1,7 +1,8 @@
 import { PutObjectCommand } from '@aws-sdk/client-s3'
 import { getSignedUrl } from '@aws-sdk/s3-request-presigner'
 import {
-  BUCKET, missingEnv, makeR2, makeSupabase, getUserFromRequest, safeFileName,
+  BUCKET, missingEnv, makeR2, makeSupabase, makeSupabaseAdmin,
+  getUserFromRequest, safeFileName,
 } from './_r2.js'
 
 export const MAX_UPLOAD_BYTES = 100 * 1024 * 1024 // 100MB
@@ -13,6 +14,7 @@ const REQUIRED = [
   'CLOUDFLARE_R2_BUCKET_NAME',
   'VITE_SUPABASE_URL',
   'VITE_SUPABASE_ANON_KEY',
+  'SUPABASE_SERVICE_ROLE_KEY',
 ]
 
 export default async function handler(req, res) {
@@ -44,8 +46,9 @@ export default async function handler(req, res) {
       return res.status(400).json({ error: `ファイルが大きすぎます（最大${MAX_UPLOAD_BYTES / 1024 / 1024}MB）` })
     }
 
-    // その取引の販売者本人かつ、キャンセル済みでないことを確認
-    const { data: txn, error: txnError } = await supabase
+    // その取引の販売者本人かつ、キャンセル済みでないことを確認。
+    // RLS で anon からは読めないため、JWT 検証済みの上で service role を使う。
+    const { data: txn, error: txnError } = await makeSupabaseAdmin()
       .from('transactions')
       .select('seller_id, status')
       .eq('id', transactionId)

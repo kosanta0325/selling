@@ -245,7 +245,7 @@ app.post('/api/upload-url', async (req, res) => {
       return res.status(400).json({ error: `ファイルが大きすぎます（最大${MAX_UPLOAD_BYTES / 1024 / 1024}MB）` })
     }
 
-    const { data: txn, error: txnError } = await supabase
+    const { data: txn, error: txnError } = await supabaseAdmin
       .from('transactions')
       .select('seller_id, status')
       .eq('id', transactionId)
@@ -338,7 +338,7 @@ app.get('/api/download-url', async (req, res) => {
     const transactionId = parseKey(key)
     if (!transactionId) return res.status(400).json({ error: '無効なキーです' })
 
-    const { data: txn, error: txnError } = await supabase
+    const { data: txn, error: txnError } = await supabaseAdmin
       .from('transactions')
       .select('buyer_id, seller_id, status')
       .eq('id', transactionId)
