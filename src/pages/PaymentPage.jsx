@@ -5,7 +5,9 @@ import { Elements, CardNumberElement, CardExpiryElement, CardCvcElement, useStri
 import { useAuth } from '../context/AuthContext'
 import { supabase } from '../lib/supabase'
 
-const stripePromise = loadStripe(import.meta.env.VITE_STRIPE_PUBLISHABLE_KEY)
+// キーが無いまま loadStripe を呼ぶと例外になり、入力欄が無言で消えるので分岐させる
+const STRIPE_KEY = import.meta.env.VITE_STRIPE_PUBLISHABLE_KEY
+const stripePromise = STRIPE_KEY ? loadStripe(STRIPE_KEY) : null
 
 const cardStyle = {
   style: {
@@ -195,9 +197,19 @@ export default function PaymentPage() {
             <span style={s.cardBrand}>💳</span>
             <h2 style={s.formTitle}>カード情報を入力</h2>
           </div>
-          <Elements stripe={stripePromise}>
-            <CheckoutForm product={product} />
-          </Elements>
+          {STRIPE_KEY ? (
+            <Elements stripe={stripePromise}>
+              <CheckoutForm product={product} />
+            </Elements>
+          ) : (
+            <div style={s.configError}>
+              <div style={s.configErrorTitle}>⛔ 決済を利用できません</div>
+              <p style={s.configErrorText}>
+                Stripeの公開キー（<code>VITE_STRIPE_PUBLISHABLE_KEY</code>）が設定されていないため、
+                カード入力欄を表示できません。
+              </p>
+            </div>
+          )}
         </div>
 
       </div>
@@ -311,6 +323,14 @@ const s = {
     borderRadius: 20,
     padding: '28px 24px',
   },
+  configError: {
+    background: 'rgba(232,84,47,0.08)',
+    border: '1px solid rgba(232,84,47,0.35)',
+    borderRadius: 12,
+    padding: '16px 18px',
+  },
+  configErrorTitle: { fontSize: 14, fontWeight: 700, color: '#ff8a65', marginBottom: 8 },
+  configErrorText: { fontSize: 13, lineHeight: 1.8, color: 'rgba(255,255,255,0.75)' },
   formHeader: {
     display: 'flex',
     alignItems: 'center',
